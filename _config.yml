@@ -3,11 +3,11 @@
 # ----------------------- #
 
 url: http://hrchen.github.io
-title: hrchen is blogging
-subtitle: Building mobile apps.
+title: hrchen's blogging
+subtitle: Dr. Chen
 author: Haoran Chen
 simple_search: http://google.com/search
-description:
+description: Building mobile apps, learning interesting stuff.
 
 # Default date format is "ordinal" (resulting in "July 22nd 2007")
 # You can customize the format as defined in
