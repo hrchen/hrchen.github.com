@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[hrchen's blogging]]></title>
+  <link href="http://hrchen.github.io/atom.xml" rel="self"/>
+  <link href="http://hrchen.github.io/"/>
+  <updated>2013-05-27T00:25:49+08:00</updated>
+  <id>http://hrchen.github.io/</id>
+  <author>
+    <name><![CDATA[Haoran Chen]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[第一次开始写Blog]]></title>
+    <link href="http://hrchen.github.io/blog/2013/05/26/my-first-blog/"/>
+    <updated>2013-05-26T22:27:00+08:00</updated>
+    <id>http://hrchen.github.io/blog/2013/05/26/my-first-blog</id>
+    <content type="html"><![CDATA[
+]]></content>
+  </entry>
+  
+</feed>
