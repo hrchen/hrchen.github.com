@@ -1,33 +1,93 @@
-<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[hrchen's blogging]]></title>
-  <link href="http://hrchen.com/atom.xml" rel="self"/>
-  <link href="http://hrchen.com/"/>
-  <updated>2013-06-03T01:08:37+08:00</updated>
-  <id>http://hrchen.com/</id>
-  <author>
-    <name><![CDATA[hrchen]]></name>
-    <email><![CDATA[dr.hrchen@gmail.com]]></email>
-  </author>
-  <generator uri="http://octopress.org/">Octopress</generator>
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>iOS App性能优化 - hrchen's blogging</title>
+	<meta name="author" content="hrchen">
 
+	
+	<meta name="description" content="iOS App性能优化 iOS App的性能关注点 虽然iPhone的机能越来越好，但是app的功能也越来越复杂，性能从来都是移动开发的核心关注点之一。我们说一个app性能好，不是简单指感觉运行速度快，而应该是指应用启动快速、UI反馈响应及时、列表滚动操作流畅、内存使用合理， &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="hrchen's blogging" type="application/atom+xml">
+	
+	<link rel="canonical" href="http://hrchen.com/2013/05/29/performance-with-instruments/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		$(function(){
+			$('.profilepic').append("<img src='http://www.gravatar.com/avatar/" + MD5("dr.hrchen@gmail.com") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+		});
+	</script>
+</div>
+<hgroup>
+  <h1><a href="/">hrchen's blogging</a></h1>
   
-  <entry>
-    <title type="html"><![CDATA[iOS多线程编程Part 1]]></title>
-    <link href="http://hrchen.com/2013/06/02/multi-threding-programming-of-ios-part-1/"/>
-    <updated>2013-06-02T23:11:00+08:00</updated>
-    <id>http://hrchen.com/2013/06/02/multi-threding-programming-of-ios-part-1</id>
-    <content type="html"><![CDATA[
-]]></content>
-  </entry>
+    <h2>Mobile Dev</h2>
   
-  <entry>
-    <title type="html"><![CDATA[iOS App性能优化]]></title>
-    <link href="http://hrchen.com/2013/05/29/performance-with-instruments/"/>
-    <updated>2013-05-29T14:20:00+08:00</updated>
-    <id>http://hrchen.com/2013/05/29/performance-with-instruments</id>
-    <content type="html"><![CDATA[<h3>iOS App的性能关注点</h3>
+</hgroup>
+
+<p class="subtitle">Mobile Dev</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		
+		
+		<a class="twitter" href="http://twitter.com/hrchen" title="Twitter">Twitter</a>
+		
+		
+		<a class="github" href="https://github.com/hrchen" title="GitHub">GitHub</a>
+		
+		
+		
+		<a class="linkedin" href="http://www.linkedin.com/in/hrchen">LinkedIn</a>
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+	<h1 class="title" itemprop="name">iOS App性能优化</h1>
+	<div class="entry-content" itemprop="articleBody"><h3>iOS App的性能关注点</h3>
 
 <p>虽然iPhone的机能越来越好，但是app的功能也越来越复杂，性能从来都是移动开发的核心关注点之一。我们说一个app性能好，不是简单指感觉运行速度快，而应该是指应用启动快速、UI反馈响应及时、列表滚动操作流畅、内存使用合理，当然更不能随随便便Crash啦。工程师开发应用时除了在设计上要避免性能“坑”的出现，在实际遇到“坑”时也要能很快定位原因所在。定位性能问题原因当然不能靠猜，合理的方法是使用工具测量评估出投资回报最高的问题点，然后再加以优化。</p>
 
@@ -69,7 +129,7 @@
 
 <p>可能你会觉得为什么这样可拿到系统启动的时间，因为这个dispatch_async中提交的工作会在app主线程启动后的下一个run lopp中运行，此时app已经完成了载入并且将要显示第一帧画面，也就是系统会运行到<code>-[UIApplication _reportAppLaunchFinished]</code>之前。下图是用Instruments工具Time Profiler跑的调用栈，Instruments的使用方法建议看WWDC中与performance相关的<a href="https://developer.apple.com/videos/wwdc">session录像</a>，文字写起来太单薄不够直观哈。</p>
 
-<p><img src="http://hrchen.com/images/post/loading_app.png"></p>
+<p><img src="/images/post/loading_app.png"></p>
 
 <p>从图中我们可以看到在系统调用<code>[UIApplication _reportAppLaunchFinished]</code>之前完成了系统回调<code>application:didFinishLaunchingWithOptions</code>。</p>
 
@@ -89,7 +149,7 @@
 
 <p>要让主线程的run loop更好的响应用户事件，工程师应该尽量减少主线程干重活的时间，尤其是读文件啊，网络操作啊，大量运算啊这类重活，如果是阻塞操作，那就更是大忌了。我们可以用多线程(NSThread、NSOperationQueue, GCD，下一篇Blog就会聊到这多线程)将重活移出主线程，这属于显式并发。还有种隐式并发，例如view和layer的动画、layer的绘制以及PNG图片的解码都是在另一个子线程中执行的。除了使用多线程技术减轻主线程的负担外，减少主线程中阻塞也是提升用户体验的一个方法。使用Instruments中Time Profiler工具中的&#8221;Recod thread waiting&#8221;选项可以统计出app运行时各个线程中的阻塞系统调用情况，例如文件读写read/write，网络读写send/recv，加锁psynch_mutex_wait等。Instruments中的System Trace工具则能够记录所有的底层系统调用。</p>
 
-<p><img src="http://hrchen.com/images/post/record_thread_waiting.png"></p>
+<p><img src="/images/post/record_thread_waiting.png"></p>
 
 <h3>内存</h3>
 
@@ -99,17 +159,17 @@
 
 <p>现在有了超炫的ARC，内存问题相对少了很多，开发效率也得到了提高。但是很多公司的项目仍然由于历史原因采用了手动管理内存，该做的活还是少不了。Xcode自带的静态分析功能可以帮你提前发现一些问题，然而有些内存问题是无法用静态分析来发现的，例如我们不断使用内存没有及时释放的问题，就无法使用静态分析器分析出来。此时可以使用Instruments的Allocations和Leaks工具来检查运行时的的内存使用以及泄露问题。</p>
 
-<p><img src="http://hrchen.com/images/post/allocations.png"></p>
+<p><img src="/images/post/allocations.png"></p>
 
 <p>Allocations工具可以很直观的反应app的内存使用情况，还有个很赞“Mark Heap”功能，在上图左边下半部分中的Heapshot Analysis中。例如你在进入一个页面前点击一下“Mark Heap”，然后再退回上一页面点击一下“Mark Heap”，如果你在进出这个页面里所申请的内存都得到了合理的释放，那么堆的内存增长量就应该降至0（见上图右下部分）。</p>
 
 <p>另一种严重的内存使用问题是引用了已经释放的内存，直接导致应用崩溃，而Allocation有一个选项Enable NSZombie detection能够在应用使用已经释放的内存时标注出来，同时显示错误发生的调用栈信息。这为解决问题提供了最直接的帮助，当然缺点是必须能够重现EXEC_BAD_ACCESS错误。</p>
 
-<p><img src="http://hrchen.com/images/post/zombies.png"></p>
+<p><img src="/images/post/zombies.png"></p>
 
 <p>工具Leaks可以在应用运行时直接标示出存在内存泄露的代码，如果发生了内存泄露，可以从泄露详细信息中查看泄露的具体对象以及方法调用栈，大部分问题还是很好解决的。</p>
 
-<p><img src="http://hrchen.com/images/post/leak.png"></p>
+<p><img src="/images/post/leak.png"></p>
 
 <h3>图形和动画</h3>
 
@@ -117,13 +177,13 @@
 
 <p>启动Instruments的Core Animation工具后可以发现左下部分有一堆选项，我们来逐个介绍：</p>
 
-<p><img src="http://hrchen.com/images/post/core_animation.png"></p>
+<p><img src="/images/post/core_animation.png"></p>
 
 <p>1) Color Blended Layers</p>
 
 <p>Instruments可以在物理机上显示出被混合的图层Blended Layer(用红色标注)，Blended Layer是因为这些Layer是透明的(Transparent)，系统在渲染这些view时需要将该view和下层view混合(Blend)后才能计算出该像素点的实际颜色，如果这种blended layer很多，那么在滚动列表时就甭想有流畅的效果。</p>
 
-<p><img src="http://hrchen.com/images/post/color_blended_layer.png"></p>
+<p><img src="/images/post/color_blended_layer.png"></p>
 
 <p>解决blended layer问题也很简单，检查红色区域view的opaque属性，记得设置成YES；检查backgroundColor属性是不是<code>[UIColor clearColor]</code>，要知道背景颜色为clear color那可是图形性能的大敌，基本意味着blended layer是跑不了的了，为什么？自己思考一下:)</p>
 
@@ -136,7 +196,7 @@
 
 <p>Misaligned Image表示要绘制的点无法直接映射到频幕上的像素点，此时系统需要对相邻的像素点做anti-aliasing反锯齿计算，增加了图形负担，通常这种问题出在对某些View的Frame重新计算和设置时产生的。</p>
 
-<p><img src="http://hrchen.com/images/post/color_misaligned_image.png"></p>
+<p><img src="/images/post/color_misaligned_image.png"></p>
 
 <p>上图中被标注为黄色的图层，这是由于图层显示的是被缩放后的图片，如果这些图片是通过网络下载的，可以通过程序更新为确定的绘制大小来解决。还有些系统Navigation Bar和Tool Bar的背景图片使用的是拉伸(Streched)图片，也会被表示为黄色，这是属于正常情况，通常无需修改。这种问题一般对性能影响不大，而是可能会在边缘处虚化。</p>
 
@@ -166,11 +226,11 @@ Color Immediately选项表示Instruments在做color-flush操作时取消10毫秒
 
 <p>工具File Activity只能在模拟器中运行，因此数据采集可能不是非常准确。它同样可以详细给出读取的文件属性、大小、载入时间等信息，适合与System Usage配合使用。</p>
 
-<p><img src="http://hrchen.com/images/post/file_activity.png"></p>
+<p><img src="/images/post/file_activity.png"></p>
 
 <p>Network工具则可以采集到应用的TCP/IP和UDP的使用信息(传输的数据量、当前所有TCP连接等)，用得不多，做网络使用状况分析时用用还行。</p>
 
-<p><img src="http://hrchen.com/images/post/instruments_networking.png"></p>
+<p><img src="/images/post/instruments_networking.png"></p>
 
 <h3>更多阅读</h3>
 
@@ -213,18 +273,68 @@ Color Immediately选项表示Instruments在做color-flush操作时取消10毫秒
 <p><a href="http://robots.thoughtbot.com/post/36591648724/designing-for-ios-graphics-performance">http://robots.thoughtbot.com/post/36591648724/designing-for-ios-graphics-performance</a></p>
 
 <p><a href="http://www.touchwonders.com/en/how-to-make-your-apps-feel-responsive-and-fast-part-2/">http://www.touchwonders.com/en/how-to-make-your-apps-feel-responsive-and-fast-part-2/</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[重新开始写Blog]]></title>
-    <link href="http://hrchen.com/2013/05/26/my-first-blog/"/>
-    <updated>2013-05-26T22:27:00+08:00</updated>
-    <id>http://hrchen.com/2013/05/26/my-first-blog</id>
-    <content type="html"><![CDATA[<p>最近好几次被问到有没有个人Blog，惭愧=。=~~~~虽然曾经搭过WordPress、注册过Blogger，都没能坚持下来，其实写Blog对技术人员来说是很好的总结方式，值得坚持。</p>
+</div>
 
-<p>既然要整blog，当然要用正夯的工具，目前最方便的就是github pages啦，搭个octopress，找个漂漂主题，上！发现markdown写起来蛮像读书时写论文用的<a href="http://www.latex-project.org/">LaTex</a>，可以让你专注于码字，而不是格式。</p>
-]]></content>
-  </entry>
-  
-</feed>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+	
+	
+	<a class="addthis_button_tweet"></a>
+	
+	
+	<a class="addthis_counter addthis_pill_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/250/addthis_widget.js#pubid="></script>
+</div>
+
+
+
+<section id="comment">
+    <h1 class="title">Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2013 - hrchen -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'hrchen';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://hrchen.com/2013/05/29/performance-with-instruments/';
+        var disqus_url = 'http://hrchen.com/2013/05/29/performance-with-instruments/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>
