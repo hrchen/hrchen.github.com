@@ -11,7 +11,7 @@ categories: iOS
 对于pthred这种跨平台的多线程开发技术，这本[Programming with POSIX Threads](http://www.amazon.com/Programming-POSIX-Threads-David-Butenhof/dp/0201633922/)做了详细介绍，本文不再提及。
 
 
-###NSThread方法
+###NSThread
 使用NSThead创建线程有两个API接口：
 
 * +detachNewThreadSelector:toTarget:withObject:类方法直接生成一个子线程
@@ -137,7 +137,7 @@ Run Loop的作用是什么呢？在上一节NSThread的入口函数中已经说�
 
 {% img /images/post/runloop_source.jpg %}
 
-1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，NSFoundation或者Core Foundation都有相应接口实现。
+1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。
 
 2) Input Source中的-performSelector:***API调用簇方法，有以下这些：
 
@@ -157,9 +157,11 @@ cancelPreviousPerformRequestsWithTarget:selector:object:
 ```
 这些API最后两个是取消当前线程中调用，其他API是在主线程或者当前线程下一个Run Loop循环中执行指定的@selector。
 
-3) Port Input Source：概念上也比较简单，可以用NSPort作为线程之间的通讯通道。例如在主线程创建子线程时传入一个NSPort对象，这样主线程就可以和这个子线程通讯啦，如果要实现双向通讯，那么子线程也需要回传给主线程一个NSPort，详细例子请参考Sample Code。
+3) Port Input Source：概念上也比较简单，可以用NSMachPort作为线程之间的通讯通道。例如在主线程创建子线程时传入一个NSPort对象，这样主线程就可以和这个子线程通讯啦，如果要实现双向通讯，那么子线程也需要回传给主线程一个NSPort，详细例子请参考Sample Code。
 
-除了NSPort，使用NSMessagePort或者Core Foundation中的CFMessagePortRef也一样可以实现Port Input Source的添加。
+除了NSMachPort，使用NSMessagePort或者Core Foundation中的CFMessagePortRef也一样可以实现Port Input Source的添加。
+
+##### 注意：虽然有这么棒的方式实现线程间通讯，但是估计由于会危及iOS的Sandbox沙盒环境，所以这些API都是私有接口，如果你用到NSPortMessage，XCode会提示`'NSPortMessage' for instance message is a forward declaration`。
 
 4) 自定义 Input Source：
 
@@ -176,7 +178,7 @@ cancelPreviousPerformRequestsWithTarget:selector:object:
 ###Sample Code
 看的晕乎乎？理解概念最好的方式当然还是动手写代码啦，本文涉及的例子放在了[GitHub]()上，欢迎讨论。
 
-Apple官方也有一个基于Run Loop的异步网络连接[Sample](http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html)，值得一看。
+Apple官方也有一个基于Run Loop的异步网络连接样例程序[SimpleURLConnections](http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html)，值得一看。
 
 
 ###参考文献
