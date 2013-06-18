@@ -6,9 +6,9 @@ comments: true
 categories: iOS
 ---
 ###前言
-多线程编程的价值无需赘述，对于app性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的开发方法支持多线程编程，除了跨平台的pthread之外，还提供了NSTrhead、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种技术的细节。
+多线程编程的价值无需赘述，对于app性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的开发方法支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种技术的细节。
 
-对于pthred这种跨平台的多线程开发技术，这本[Programming with POSIX Threads](http://www.amazon.com/Programming-POSIX-Threads-David-Butenhof/dp/0201633922/)做了详细介绍，本文不再提及。
+对于pthread这种跨平台的多线程技术，这本[Programming with POSIX Threads](http://www.amazon.com/Programming-POSIX-Threads-David-Butenhof/dp/0201633922/)做了详细介绍，本文不再提及。
 
 
 ###NSThread
@@ -32,6 +32,8 @@ NSThread* aThread = [[NSThread alloc] initWithTarget:self selector:@selector(thr
 ```objc
 [myObj performSelectorInBackground:@selector(threadRoutine:) withObject:nil];
 ```
+
+<!-- more -->
 
 创建线程也是有开销的，iOS下主要的成本是需要构造内核数据结构（大约1KB）、栈空间（子线程512KB、主线程1MB，不过可以使用方法`-setStackSize:`自己设置，注意必须是4K的倍数，而且最小是16K），大约需要90毫秒的创建时间。
 
@@ -161,7 +163,7 @@ cancelPreviousPerformRequestsWithTarget:selector:object:
 
 除了NSMachPort，使用NSMessagePort或者Core Foundation中的CFMessagePortRef也一样可以实现Port Input Source的添加。
 
-##### 注意：虽然有这么棒的方式实现线程间通讯，但是估计由于会危及iOS的Sandbox沙盒环境，所以这些API都是私有接口，如果你用到NSPortMessage，XCode会提示`'NSPortMessage' for instance message is a forward declaration`。
+#### 注意：虽然有这么棒的方式实现线程间通讯，但是估计由于会危及iOS的Sandbox沙盒环境，所以这些API都是私有接口，如果你用到NSPortMessage，XCode会提示`'NSPortMessage' for instance message is a forward declaration`。
 
 4) 自定义 Input Source：
 
