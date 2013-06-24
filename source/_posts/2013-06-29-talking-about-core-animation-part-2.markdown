@@ -1,14 +1,13 @@
 ---
 layout: post
-title: "iOS多线程编程Part 1/3 - NSThread"
+title: "iOS多线程编程Part 2/3 - NSOperation"
 date: 2013-06-02 23:11
 comments: true
 categories: iOS
+published:false
 ---
 ###前言
-多线程的价值无需赘述，对于app性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种技术的细节。
-
-对于pthread这种跨平台的多线程技术，这本[Programming with POSIX Threads](http://www.amazon.com/Programming-POSIX-Threads-David-Butenhof/dp/0201633922/)做了详细介绍，不再提及。
+上一篇Blog介绍了NSThread创建线程以及线程中令人迷惑的Run Loop概念，这篇Blog介绍下另一种多线程编程技术：NSOperation。
 
 
 ###NSThread
@@ -33,7 +32,7 @@ NSThread* aThread = [[NSThread alloc] initWithTarget:self selector:@selector(thr
 [myObj performSelectorInBackground:@selector(threadRoutine:) withObject:nil];
 ```
 
-* 创建一个NSThread子类，然后调用子类实例的start方法，。
+* 创建一个NSThread子类，然后调用子类实例的start方法。
 
 <!-- more -->
 
@@ -137,14 +136,11 @@ Run Loop的作用是什么呢？在上一节NSThread的入口函数中已经说�
 
 当你将子线程的Run Loop运行在一个模式时，如果该模式下没有事件源，运行Run Loop会立刻返回NO。如果你添加一个Input Source，例如`[[NSRunLoop currentRunLoop] addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];`或者持有子线程的对象在这个子线程上运行方法，例如`[self performSelector:@selector(doThreadTask) onThread:thread withObject:nil waitUntilDone:NO];`就会让这个Run Loop进入等待状态，即`-runMode:BeforDate`处于阻塞状态不返回。
 
-当然，如果`-runMode:BeforDate`的第二个参数是`[NSDate dateWithTimeIntervalSinceNow:5]`，那么Run Loop在等待5秒后一样会返回，而不是像`[NSDate distantFuture]`那样会一直等待下去。
-
-###RunLoop事件源
-归根结底，Run Loop就是个处理事件的机制，可以让你有机会唤醒休眠的(asleep)的线程来处理异步事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。
+归根结底，Run Loop就是个处理事件的机制，事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。
 
 {% img /images/post/runloop_source.jpg %}
 
-1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是`scheduledTimerWith****`开头生成的Timer会自动帮你加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用`-addTimer:forMode`添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。
+1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。
 
 2) Input Source中的-performSelector:***API调用簇方法，有以下这些接口：
 
@@ -183,27 +179,10 @@ Apple官方文档提供了一个自定义Input Source使用模式。
 
 具体的实现参见下面的Sample Code。
 
-###Run Loop的Mode
-iOS下Run Loop的主要mode有：
-
-1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。
-
-This is a configurable group of commonly used modes. Associating an input source with this mode also associates it with each of the modes in the group. 
-
-2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。如果在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用`CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)`将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。然而由于iOS不像Mac OS公开了其他的众多Run Loop模式，所以其实也没法使用CFRunLoopAddCommonMode做额外操作。
-
-3) UITrackingRunLoopMode: 用于跟踪控件事件触发的模式，主线程当控件事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。
-
-
-###Run Loop的Observer
-
-
-
-
 ###什么时候需要用Run Loop
 
 官方文档的建议是：
-* 需要使用Port或者自定义Input Source与其他线程进行通讯。
+* 需要使用port或者自定义Input Source与其他线程进行通讯。
 * 需要在线程中使用Timer。
 * 需要在线程上使用performSelector***方法。
 * 需要让线程执行周期性的工作。
