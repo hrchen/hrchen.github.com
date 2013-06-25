@@ -265,5 +265,5 @@ Run Loop就是一个处理事件源的循环，你可以控制这个Run Loop运�
 Apple官方也有一个基于Run Loop的异步网络连接样例程序[SimpleURLConnections](http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html)，值得一看。
 
 
-###参考文献
+###参考资料
 [Threading Programming Guide](https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/Multithreading/CreatingThreads/CreatingThreads.html)
