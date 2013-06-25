@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-06-26T00:02:21+08:00</updated>
+  <updated>2013-06-26T00:12:57+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -92,13 +92,9 @@ self.connection =[[NSURLConnection alloc] initWithRequest:request
 
 <h3>Sample Code</h3>
 
-<p>看的晕乎乎？理解概念最好的方式当然还是动手写代码，写了个例子放在<a href="https://github.com/hrchen/NSThreadExample">GitHub</a>上，欢迎讨论。</p>
-
-<p>Apple官方也有一个基于Run Loop的异步网络连接样例程序<a href="http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html">SimpleURLConnections</a>，值得一看。</p>
-
 <h3>参考资料</h3>
 
-<p><a href="https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/Multithreading/CreatingThreads/CreatingThreads.html">Threading Programming Guide</a></p>
+<p>未完待续</p>
 ]]></content>
   </entry>
   
