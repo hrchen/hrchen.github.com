@@ -4,10 +4,10 @@
 
 url: http://hrchen.com
 title: hrchen's blogging
-subtitle: Mobile Dev
+subtitle: Mobile Dev (dr.hrchen#gmail.com)
 author: hrchen
 simple_search: http://google.com/search
-description: 专注移动产品开发，了解点后端，果粉
+description: CS Ph.D，专注移动产品开发，了解点后端
 
 # Default date format is "ordinal" (resulting in "July 22nd 2007")
 # You can customize the format as defined in
@@ -27,7 +27,7 @@ email: dr.hrchen@gmail.com
 
 # If publishing to a subdirectory as in http://site.com/project set 'root: /project'
 root: /
-permalink: /:year/:month/:day/:title/
+permalink: /:year/:month/:title/
 source: source
 destination: public
 plugins: plugins
@@ -98,4 +98,4 @@ facebook_like: false
 weibo_user: dr_hrchen
 
 # LinkedIn
-linkedin_user: hrchen
+#linkedin_user: hrchen
