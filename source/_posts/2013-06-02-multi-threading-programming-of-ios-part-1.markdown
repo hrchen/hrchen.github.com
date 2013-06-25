@@ -90,7 +90,7 @@ NSRunLoop一直都是个比较让人迷惑的概念，相关的介绍资料也�
 
 * 每个线程都有一个Run Loop，主线程的Run Loop会在App运行时被运行，子线程需要手动设置运行。
 * 每个Run Loop都会以一个模式mode来运行，，可以使用`- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate` 来运行某个特定模式mode。
-* Run Loop的主要作用是监听Timer和Input Source，每个source都会绑定在Run Loop的某个特定模式mode上，而且只有RunLoop在这个模式运行的时候才会触发该Timer和Input Source。
+* Run Loop的主要作用是监听Timer和Input Source，每个事件源都会绑定在Run Loop的某个特定模式mode上，而且只有RunLoop在这个模式运行的时候才会触发该Timer和Input Source。
 
 Run Loop的作用是什么呢？在上一节NSThread的入口函数中已经说明了一种NSRunLoop的使用场景，下面再看一例：
 
@@ -196,19 +196,68 @@ This is a configurable group of commonly used modes. Associating an input source
 
 
 ###Run Loop的Observer
+Run Loop的观察者能够在Run Loop触发以下事件时得到通知：
 
+* Run loop的进入
+* Run loop处理一个Timer的时刻
+* Run loop处理一个Input Source的时刻
+* Run loop进入睡眠的时刻
+* Run loop被唤醒的时刻，但在唤醒它的事件被处理之前
+* Run loop的终止
 
+Observer的创建以及添加到Run Loop中需要使用Core Foundation的接口：
 
+```
+CFRunLoopObserverContext  context = {0, (__bridge void *)(self), NULL, NULL, NULL};
+CFRunLoopObserverRef observer = CFRunLoopObserverCreate(kCFAllocatorDefault, kCFRunLoopBeforeTimers, YES, 0, &myRunLoopObserver, &context);  
+if (observer)
+{
+	CFRunLoopAddObserver(CFRunLoopGetCurrent(), observer,
+                                 kCFRunLoopCommonModes);
+}
+```
+首先创建Observer的context，然后调用Core Foundation方法CFRunLoopObserverCreate创建Observer，再加入到当前线程的Run Loop中，注意CFRunLoopObserverCreate方法的第二个参数是Observer观察类型，有如下几种：
 
-###什么时候需要用Run Loop
+```
+/* Run Loop Observer Activities */
+typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
+    kCFRunLoopEntry = (1UL << 0),
+    kCFRunLoopBeforeTimers = (1UL << 1),
+    kCFRunLoopBeforeSources = (1UL << 2),
+    kCFRunLoopBeforeWaiting = (1UL << 5),
+    kCFRunLoopAfterWaiting = (1UL << 6),
+    kCFRunLoopExit = (1UL << 7),
+    kCFRunLoopAllActivities = 0x0FFFFFFFU
+};
 
-官方文档的建议是：
+```
+刚好对应Run Loop的各种事件，kCFRunLoopAllActivities比较特殊，可以观察所有事件。具体样例代码请参考Sample Code。
+
+###总结
+
+Run Loop就是一个处理事件源的循环，你可以控制这个Run Loop运行多久，如果当前没有事件发生，Run Loop会让这个线程进入睡眠状态(避免再浪费CPU时间)，如果有事件发生，Run Loop就处理这个事件。Run Loop的处理事件和发送给Observer通知的流程如下：
+
+* 1) 进入Run Loop运行，此时会通知观察者进入Run Loop；
+* 2) 如果有Timer即将触发时，通知观察者；
+* 3) 如果有非Port的Input Sourc即将e触发时，通知观察者；
+* 4）触发非Port的Input Source事件源；
+* 5）如果基于Port的Input Source事件源即将触发时，立即处理该事件，跳转到步骤9；
+* 6）通知观察者当前线程将进入休眠状态；
+* 7）将线程进入休眠状态直到有以下事件发生：基于Port的Input Source被触发、Timer被触发、Run Loop运行时间到了过期时间、Run Loop被唤醒。
+* 8) 通知观察者线程将要被唤醒。
+* 9) 处理被触发的事件：
+	 * 如果是用户自定义的Timer，处理Timer事件后重新启动Run Loop进入步骤2；
+	 * 如果线程被唤醒又没有到过期时间，则进入步骤2；
+	 * 如果是其他Input Source事件源有事件发生，直接处理这个事件；
+* 10)到达此步骤说明Run Loop运行时间到期，或者是非Timer的Input Source事件被处理后，Run Loop将要退出，退出前通知观察者线程已退出。
+
+什么时候需要用到Run Loop？官方文档的建议是：
+
 * 需要使用Port或者自定义Input Source与其他线程进行通讯。
 * 需要在线程中使用Timer。
 * 需要在线程上使用performSelector***方法。
 * 需要让线程执行周期性的工作。
 
-子线程运行过程中被Kill掉了怎么办？加一个run loop observer到线程的Run Loop中，这也线程
 
 ###Sample Code
 看的晕乎乎？理解概念最好的方式当然还是动手写代码，写了个例子放在[GitHub](https://github.com/hrchen/NSThreadExample)上，欢迎讨论。
