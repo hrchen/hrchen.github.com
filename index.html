@@ -7,7 +7,7 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="Jun 2nd, 2013 iOS iOS多线程编程Part 1 - NSThread 前言 多线程的价值无需赘述，对于app性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、 &hellip;">
+	<meta name="description" content="Jun 24th, 2013 iOS 一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes 通常我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有ASIHTTPRequest（已经停止开发维护） &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -103,6 +103,94 @@
   
 
 
+<time datetime="2013-06-24T16:15:00+08:00" data-updated="true" itemprop="datePublished">Jun 24<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" itemprop="url">一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>通常我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有<a href="https://github.com/pokeb/asi-http-request/">ASIHTTPRequest</a>（已经停止开发维护）和<a href="https://github.com/AFNetworking/AFNetworking">AFNetWorking</a>。两者实现异步下载的方式不太相同，ASIHTTPRequest使用的是每个请求独立子线程和CFNetWork API的技术：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (NSThread *)threadForRequest:(ASIHTTPRequest *)request
+</span><span class='line'>{
+</span><span class='line'>  if (networkThread == nil) {
+</span><span class='line'>      @synchronized(self) {
+</span><span class='line'>          if (networkThread == nil) {
+</span><span class='line'>              networkThread = [[NSThread alloc] initWithTarget:self selector:@selector(runRequests) object:nil];
+</span><span class='line'>              [networkThread start];
+</span><span class='line'>          }
+</span><span class='line'>      }
+</span><span class='line'>  }
+</span><span class='line'>  return networkThread;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>AFNetWorking则是使用NSOperation和NSURLConnection的技术实现异步网络通讯，然而它在NSOperation中真正要实现网络请求时，同样生成了一个子线程来执行实际的网络请求：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (NSThread *)networkRequestThread {
+</span><span class='line'>    static NSThread *_networkRequestThread = nil;
+</span><span class='line'>    static dispatch_once_t oncePredicate;
+</span><span class='line'>    dispatch_once(&oncePredicate, ^{
+</span><span class='line'>        _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];
+</span><span class='line'>        [_networkRequestThread start];
+</span><span class='line'>    });
+</span><span class='line'>
+</span><span class='line'>    return _networkRequestThread;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+
+		
+		<a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
 <time datetime="2013-06-02T23:11:00+08:00" data-updated="true" itemprop="datePublished">Jun 2<span>nd</span>, 2013</time></div>
 		<div class="tags">
 
@@ -113,7 +201,7 @@
 </div>
 		
 	</div>
-	<h1 class="title" itemprop="name"><a href="/2013/06/02/multi-threading-programming-of-ios-part-1/" itemprop="url">iOS多线程编程Part 1 - NSThread</a></h1>
+	<h1 class="title" itemprop="name"><a href="/2013/06/multi-threading-programming-of-ios-part-1/" itemprop="url">iOS多线程编程Part 1/3 - NSThread</a></h1>
 	<div class="entry-content" itemprop="articleBody">
 		<h3>前言</h3>
 
@@ -158,13 +246,13 @@
 
 
 <ul>
-<li>创建一个NSThread子类，然后调用子类实例的start方法。</li>
+<li>创建一个NSThread子类，然后调用子类实例的start方法，。</li>
 </ul>
 
 
 
 		
-		<a href="/2013/06/02/multi-threading-programming-of-ios-part-1/" class="more-link">继续阅读</a>
+		<a href="/2013/06/multi-threading-programming-of-ios-part-1/" class="more-link">继续阅读</a>
 	</div>
 
 </article>
@@ -194,7 +282,7 @@
 </div>
 		
 	</div>
-	<h1 class="title" itemprop="name"><a href="/2013/05/29/performance-with-instruments/" itemprop="url">iOS App性能优化</a></h1>
+	<h1 class="title" itemprop="name"><a href="/2013/05/performance-with-instruments/" itemprop="url">iOS App性能优化</a></h1>
 	<div class="entry-content" itemprop="articleBody">
 		<h3>iOS App的性能关注点</h3>
 
@@ -217,7 +305,7 @@
 
 
 		
-		<a href="/2013/05/29/performance-with-instruments/" class="more-link">继续阅读</a>
+		<a href="/2013/05/performance-with-instruments/" class="more-link">继续阅读</a>
 	</div>
 
 </article>
@@ -247,7 +335,7 @@
 </div>
 		
 	</div>
-	<h1 class="title" itemprop="name"><a href="/2013/05/26/my-first-blog/" itemprop="url">重新开始写Blog</a></h1>
+	<h1 class="title" itemprop="name"><a href="/2013/05/my-first-blog/" itemprop="url">重新开始写Blog</a></h1>
 	<div class="entry-content" itemprop="articleBody">
 		<p>最近好几次被问到有没有个人Blog，惭愧=。=~~~~虽然曾经搭过WordPress、注册过Blogger，都没能坚持下来，其实写Blog对技术人员来说是很好的总结方式，值得坚持。</p>
 

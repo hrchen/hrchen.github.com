@@ -3,11 +3,11 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>iOS多线程编程Part 1 - NSThread - hrchen's blogging</title>
+	<title>iOS多线程编程Part 1/3 - NSThread - hrchen's blogging</title>
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="iOS多线程编程Part 1 - NSThread 前言 多线程的价值无需赘述，对于app性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术， &hellip;">
+	<meta name="description" content="iOS多线程编程Part 1/3 - NSThread 前言 多线程的价值无需赘述，对于app性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、 &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -17,7 +17,7 @@
 
 	<link href="/atom.xml" rel="alternate" title="hrchen's blogging" type="application/atom+xml">
 	
-	<link rel="canonical" href="http://hrchen.com/2013/06/02/multi-threading-programming-of-ios-part-1/">
+	<link rel="canonical" href="http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">
 	<link href="/favicon.png" rel="shortcut icon">
 	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
 	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
@@ -86,7 +86,7 @@
 			
 			<div class="mid-col-container">
 				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
-	<h1 class="title" itemprop="name">iOS多线程编程Part 1 - NSThread</h1>
+	<h1 class="title" itemprop="name">iOS多线程编程Part 1/3 - NSThread</h1>
 	<div class="entry-content" itemprop="articleBody"><h3>前言</h3>
 
 <p>多线程的价值无需赘述，对于app性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种技术的细节。</p>
@@ -130,7 +130,7 @@
 
 
 <ul>
-<li>创建一个NSThread子类，然后调用子类实例的start方法。</li>
+<li>创建一个NSThread子类，然后调用子类实例的start方法，。</li>
 </ul>
 
 
@@ -217,7 +217,7 @@
 <ul>
 <li>每个线程都有一个Run Loop，主线程的Run Loop会在App运行时被运行，子线程需要手动设置运行。</li>
 <li>每个Run Loop都会以一个模式mode来运行，，可以使用<code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate</code> 来运行某个特定模式mode。</li>
-<li>Run Loop的主要作用是监听Timer和Input Source，每个source都会绑定在Run Loop的某个特定模式mode上，而且只有RunLoop在这个模式运行的时候才会触发该Timer和Input Source。</li>
+<li>Run Loop的主要作用是监听Timer和Input Source，每个事件源都会绑定在Run Loop的某个特定模式mode上，而且只有RunLoop在这个模式运行的时候才会触发该Timer和Input Source。</li>
 </ul>
 
 
@@ -299,11 +299,15 @@
 
 <p>当你将子线程的Run Loop运行在一个模式时，如果该模式下没有事件源，运行Run Loop会立刻返回NO。如果你添加一个Input Source，例如<code>[[NSRunLoop currentRunLoop] addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];</code>或者持有子线程的对象在这个子线程上运行方法，例如<code>[self performSelector:@selector(doThreadTask) onThread:thread withObject:nil waitUntilDone:NO];</code>就会让这个Run Loop进入等待状态，即<code>-runMode:BeforDate</code>处于阻塞状态不返回。</p>
 
-<p>归根结底，Run Loop就是个处理事件的机制，事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。</p>
+<p>当然，如果<code>-runMode:BeforDate</code>的第二个参数是<code>[NSDate dateWithTimeIntervalSinceNow:5]</code>，那么Run Loop在等待5秒后一样会返回，而不是像<code>[NSDate distantFuture]</code>那样会一直等待下去。</p>
+
+<h3>RunLoop事件源</h3>
+
+<p>归根结底，Run Loop就是个处理事件的机制，可以让你有机会唤醒休眠的(asleep)的线程来处理异步事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。</p>
 
 <p><img src="/images/post/runloop_source.jpg"></p>
 
-<p>1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。</p>
+<p>1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是<code>scheduledTimerWith****</code>开头生成的Timer会自动帮你加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用<code>-addTimer:forMode</code>添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。</p>
 
 <p>2) Input Source中的-performSelector:***API调用簇方法，有以下这些接口：</p>
 
@@ -352,15 +356,112 @@
 
 <p>具体的实现参见下面的Sample Code。</p>
 
-<h3>什么时候需要用Run Loop</h3>
+<h3>Run Loop的Mode</h3>
 
-<p>官方文档的建议是：
-* 需要使用port或者自定义Input Source与其他线程进行通讯。
-* 需要在线程中使用Timer。
-* 需要在线程上使用performSelector***方法。
-* 需要让线程执行周期性的工作。</p>
+<p>iOS下Run Loop的主要mode有：</p>
 
-<p>子线程运行过程中被Kill掉了怎么办？加一个run loop observer到线程的Run Loop中，这也线程</p>
+<p>1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。</p>
+
+<p>This is a configurable group of commonly used modes. Associating an input source with this mode also associates it with each of the modes in the group.</p>
+
+<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。如果在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。然而由于iOS不像Mac OS公开了其他的众多Run Loop模式，所以其实也没法使用CFRunLoopAddCommonMode做额外操作。</p>
+
+<p>3) UITrackingRunLoopMode: 用于跟踪控件事件触发的模式，主线程当控件事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。</p>
+
+<h3>Run Loop的Observer</h3>
+
+<p>Run Loop的观察者能够在Run Loop触发以下事件时得到通知：</p>
+
+<ul>
+<li>Run loop的进入</li>
+<li>Run loop处理一个Timer的时刻</li>
+<li>Run loop处理一个Input Source的时刻</li>
+<li>Run loop进入睡眠的时刻</li>
+<li>Run loop被唤醒的时刻，但在唤醒它的事件被处理之前</li>
+<li>Run loop的终止</li>
+</ul>
+
+
+<p>Observer的创建以及添加到Run Loop中需要使用Core Foundation的接口：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">CFRunLoopObserverContext</span>  <span class="n">context</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">__bridge</span> <span class="kt">void</span> <span class="o">*</span><span class="p">)(</span><span class="n">self</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">};</span>
+</span><span class='line'><span class="n">CFRunLoopObserverRef</span> <span class="n">observer</span> <span class="o">=</span> <span class="n">CFRunLoopObserverCreate</span><span class="p">(</span><span class="n">kCFAllocatorDefault</span><span class="p">,</span> <span class="n">kCFRunLoopBeforeTimers</span><span class="p">,</span> <span class="n">YES</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">myRunLoopObserver</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">context</span><span class="p">);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">observer</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">CFRunLoopAddObserver</span><span class="p">(</span><span class="n">CFRunLoopGetCurrent</span><span class="p">(),</span> <span class="n">observer</span><span class="p">,</span>
+</span><span class='line'>                                 <span class="n">kCFRunLoopCommonModes</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>首先创建Observer的context，然后调用Core Foundation方法CFRunLoopObserverCreate创建Observer，再加入到当前线程的Run Loop中，注意CFRunLoopObserverCreate方法的第二个参数是Observer观察类型，有如下几种：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="cm">/* Run Loop Observer Activities */</span>
+</span><span class='line'><span class="k">typedef</span> <span class="nf">CF_OPTIONS</span><span class="p">(</span><span class="n">CFOptionFlags</span><span class="p">,</span> <span class="n">CFRunLoopActivity</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">kCFRunLoopEntry</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="n">UL</span> <span class="o">&lt;&lt;</span> <span class="mi">0</span><span class="p">),</span>
+</span><span class='line'>    <span class="n">kCFRunLoopBeforeTimers</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="n">UL</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="p">),</span>
+</span><span class='line'>    <span class="n">kCFRunLoopBeforeSources</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="n">UL</span> <span class="o">&lt;&lt;</span> <span class="mi">2</span><span class="p">),</span>
+</span><span class='line'>    <span class="n">kCFRunLoopBeforeWaiting</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="n">UL</span> <span class="o">&lt;&lt;</span> <span class="mi">5</span><span class="p">),</span>
+</span><span class='line'>    <span class="n">kCFRunLoopAfterWaiting</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="n">UL</span> <span class="o">&lt;&lt;</span> <span class="mi">6</span><span class="p">),</span>
+</span><span class='line'>    <span class="n">kCFRunLoopExit</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="n">UL</span> <span class="o">&lt;&lt;</span> <span class="mi">7</span><span class="p">),</span>
+</span><span class='line'>    <span class="n">kCFRunLoopAllActivities</span> <span class="o">=</span> <span class="mh">0x0FFFFFFF</span><span class="n">U</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>刚好对应Run Loop的各种事件，kCFRunLoopAllActivities比较特殊，可以观察所有事件。具体样例代码请参考Sample Code。</p>
+
+<h3>总结</h3>
+
+<p>Run Loop就是一个处理事件源的循环，你可以控制这个Run Loop运行多久，如果当前没有事件发生，Run Loop会让这个线程进入睡眠状态(避免再浪费CPU时间)，如果有事件发生，Run Loop就处理这个事件。Run Loop的处理事件和发送给Observer通知的流程如下：</p>
+
+<ul>
+<li>1) 进入Run Loop运行，此时会通知观察者进入Run Loop；</li>
+<li>2) 如果有Timer即将触发时，通知观察者；</li>
+<li>3) 如果有非Port的Input Sourc即将e触发时，通知观察者；</li>
+<li>4）触发非Port的Input Source事件源；</li>
+<li>5）如果基于Port的Input Source事件源即将触发时，立即处理该事件，跳转到步骤9；</li>
+<li>6）通知观察者当前线程将进入休眠状态；</li>
+<li>7）将线程进入休眠状态直到有以下事件发生：基于Port的Input Source被触发、Timer被触发、Run Loop运行时间到了过期时间、Run Loop被唤醒。</li>
+<li>8) 通知观察者线程将要被唤醒。</li>
+<li>9) 处理被触发的事件：
+
+<ul>
+<li> 如果是用户自定义的Timer，处理Timer事件后重新启动Run Loop进入步骤2；</li>
+<li> 如果线程被唤醒又没有到过期时间，则进入步骤2；</li>
+<li> 如果是其他Input Source事件源有事件发生，直接处理这个事件；</li>
+</ul>
+</li>
+<li>10)到达此步骤说明Run Loop运行时间到期，或者是非Timer的Input Source事件被处理后，Run Loop将要退出，退出前通知观察者线程已退出。</li>
+</ul>
+
+
+<p>什么时候需要用到Run Loop？官方文档的建议是：</p>
+
+<ul>
+<li>需要使用Port或者自定义Input Source与其他线程进行通讯。</li>
+<li>需要在线程中使用Timer。</li>
+<li>需要在线程上使用performSelector***方法。</li>
+<li>需要让线程执行周期性的工作。</li>
+</ul>
+
 
 <h3>Sample Code</h3>
 
@@ -368,7 +469,7 @@
 
 <p>Apple官方也有一个基于Run Loop的异步网络连接样例程序<a href="http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html">SimpleURLConnections</a>，值得一看。</p>
 
-<h3>参考文献</h3>
+<h3>参考资料</h3>
 
 <p><a href="https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/Multithreading/CreatingThreads/CreatingThreads.html">Threading Programming Guide</a></p>
 </div>
@@ -416,8 +517,8 @@ Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Sha
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://hrchen.com/2013/06/02/multi-threading-programming-of-ios-part-1/';
-        var disqus_url = 'http://hrchen.com/2013/06/02/multi-threading-programming-of-ios-part-1/';
+        var disqus_identifier = 'http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/';
+        var disqus_url = 'http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/';
         var disqus_script = 'embed.js';
       
     (function () {

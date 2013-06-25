@@ -1,24 +1,28 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
     <url>
-        <loc>http://hrchen.com/2013/05/26/my-first-blog/</loc>
+        <loc>http://hrchen.com/2013/05/my-first-blog/</loc>
         <lastmod>2013-06-18T21:57:01+08:00</lastmod>
     </url>
     <url>
-        <loc>http://hrchen.com/2013/05/29/performance-with-instruments/</loc>
+        <loc>http://hrchen.com/2013/05/performance-with-instruments/</loc>
         <lastmod>2013-06-03T01:07:58+08:00</lastmod>
     </url>
     <url>
-        <loc>http://hrchen.com/2013/06/02/multi-threading-programming-of-ios-part-1/</loc>
-        <lastmod>2013-06-20T00:16:35+08:00</lastmod>
+        <loc>http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/</loc>
+        <lastmod>2013-06-25T21:37:13+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://hrchen.com/2013/06/nsurlconnection-with-nsrunloopcommonmodes/</loc>
+        <lastmod>2013-06-25T22:53:05+08:00</lastmod>
     </url>
     <url>
         <loc>http://hrchen.com/blog/archives/</loc>
-        <lastmod>2013-06-20T00:16:35+08:00</lastmod>
+        <lastmod>2013-06-25T22:53:05+08:00</lastmod>
     </url>
     <url>
         <loc>http://hrchen.com/</loc>
-        <lastmod>2013-06-20T00:16:35+08:00</lastmod>
+        <lastmod>2013-06-25T22:53:05+08:00</lastmod>
     </url>
     <url>
         <loc>http://hrchen.com/robots.txt</loc>
