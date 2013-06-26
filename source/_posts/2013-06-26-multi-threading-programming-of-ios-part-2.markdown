@@ -4,6 +4,7 @@ title: "iOS多线程编程Part 2/3 - NSOperation"
 date: 2013-06-26 22:19
 comments: true
 categories: iOS
+published: false
 ---
 
 多线程编程Part 1介绍了NSThread以及NSRunLoop，这篇Blog介绍另一种并发编程技术：NSOPeration。
