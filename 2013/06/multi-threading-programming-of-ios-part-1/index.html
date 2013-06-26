@@ -360,7 +360,7 @@
 
 <p>This is a configurable group of commonly used modes. Associating an input source with this mode also associates it with each of the modes in the group.</p>
 
-<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。如果在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。然而由于iOS不像Mac OS公开了其他的众多Run Loop模式，所以其实也没法使用CFRunLoopAddCommonMode做额外操作。</p>
+<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。如果在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。默认情况下NSRunLoopCommonModes包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。</p>
 
 <p>3) UITrackingRunLoopMode: 用于跟踪控件事件触发的模式，主线程当控件事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。</p>
 
@@ -461,7 +461,7 @@
 
 <h3>Sample Code</h3>
 
-<p>看的晕乎乎？理解概念最好的方式当然还是动手写代码，写了个例子放在<a href="https://github.com/hrchen/NSThreadExample">GitHub</a>上，欢迎讨论。</p>
+<p>看的晕乎乎？理解概念最好的方式当然还是动手写代码，写了个例子放在<a href="https://github.com/hrchen/ExamplesForBlog">GitHub</a>上（工程NSThreadExample），欢迎讨论。</p>
 
 <p>Apple官方也有一个基于Run Loop的异步网络连接样例程序<a href="http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html">SimpleURLConnections</a>，值得一看。</p>
 

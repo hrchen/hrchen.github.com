@@ -7,7 +7,7 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="Jun 24th, 2013 iOS 一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes 通常我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有ASIHTTPRequest（已经停止开发维护） &hellip;">
+	<meta name="description" content="Jun 24th, 2013 iOS 一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes 我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有ASIHTTPRequest（已经停止开发维护） &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -111,7 +111,7 @@
 	</div>
 	<h1 class="title" itemprop="name"><a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" itemprop="url">一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes</a></h1>
 	<div class="entry-content" itemprop="articleBody">
-		<p>通常我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有<a href="https://github.com/pokeb/asi-http-request/">ASIHTTPRequest</a>（已经停止开发维护）和<a href="https://github.com/AFNetworking/AFNetworking">AFNetWorking</a>。两者实现异步下载的方式不太相同，ASIHTTPRequest使用的是每个请求独立子线程和CFNetWork API的技术：</p>
+		<p>我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有<a href="https://github.com/pokeb/asi-http-request/">ASIHTTPRequest</a>（已经停止开发维护）和<a href="https://github.com/AFNetworking/AFNetworking">AFNetWorking</a>。两者实现异步下载的方式不太相同，ASIHTTPRequest使用的是一个公共独立子线程和CFNetWork API的技术：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -139,7 +139,7 @@
 </span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
 
 
-<p>AFNetWorking则是使用NSOperation和NSURLConnection的技术实现异步网络通讯，然而它在NSOperation中真正要实现网络请求时，同样生成了一个子线程来执行实际的网络请求：</p>
+<p>AFNetWorking则是包装了NSOperation和NSURLConnection技术实现异步网络通讯，然而它在NSOperation中真正启动NSURLConnection网络请求时，同样生成了一个公共独立子线程来Kick off网络请求：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
