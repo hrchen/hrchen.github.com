@@ -260,7 +260,7 @@ Run Loop就是一个处理事件源的循环，你可以控制这个Run Loop运�
 
 
 ###Sample Code
-看的晕乎乎？理解概念最好的方式当然还是动手写代码，写了个例子放在[GitHub](https://github.com/hrchen/ExamplesForBlog)上（工程NSThreadExample），欢迎讨论。
+RunLoop刚开始确实让人晕乎乎。理解概念最好的方式当然还是动手写代码，写了个例子放在[GitHub](https://github.com/hrchen/ExamplesForBlog)上（工程NSThreadExample），欢迎大家讨论。
 
 Apple官方也有一个基于Run Loop的异步网络连接样例程序[SimpleURLConnections](http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html)，值得一看。
 
