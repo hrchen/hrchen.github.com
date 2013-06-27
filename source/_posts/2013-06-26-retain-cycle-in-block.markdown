@@ -7,5 +7,4 @@ categories: iOS
 published: false
 ---
 
-2010年WWDC发布的iOS4时Apple对Objective-C进行了重要的升级，支持Block和GCD，
-
+2010年WWDC发布iOS4时Apple对Objective-C进行一次重要的升级：支持Block。说到底这东西就是闭包，
