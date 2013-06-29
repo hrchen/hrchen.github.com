@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-06-26T22:18:24+08:00</updated>
+  <updated>2013-06-30T02:00:00+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -12,6 +12,195 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Block的引用循环问题 (ARC & non-ARC)]]></title>
+    <link href="http://hrchen.com/2013/06/retain-cycle-in-block/"/>
+    <updated>2013-06-27T00:32:00+08:00</updated>
+    <id>http://hrchen.com/2013/06/retain-cycle-in-block</id>
+    <content type="html"><![CDATA[<p>2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持，第一次使用Block感觉满简单好用的，但是慢慢也遇到很多坑，先来套<a href="http://blog.parse.com/2013/02/05/objective-c-blocks-quiz/">题目</a>热热身，貌似能够全部答对的人蛮少的。本文聊聊ARC和non-ARC下Block使用中的引用循环问题，最近遇到了好几次这种问题，还是深入记录下。</p>
+
+<h3>Block实现原理</h3>
+
+<p>首先探究下Block的实现原理，由于Objective-C是C语言的超集，既然OC中的NSObject对象其实是由C语言的struct+isa指针实现的，那么Block的内部实现估计也一样，以下三篇Blog对Block的实现机制做了详细研究：</p>
+
+<ul>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-1/">A look inside blocks: Episode 1</a></li>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-2/">A look inside blocks: Episode 2</a></li>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-3/">A look inside blocks: Episode 3</a></li>
+</ul>
+
+
+<p>虽然实现细节看着头痛，不过发现Block果然是和OC中的NSObject类似，也是用struct实现出来的东西。这个是LLVM项目compiler-rt分析的block头文<a href="https://llvm.org/svn/llvm-project/compiler-rt/trunk/BlocksRuntime/Block_private.h">Block_private.h</a>头文件中关于Block的struct声明：</p>
+
+<!--more-->
+
+
+<p>```
+struct Block_descriptor {</p>
+
+<pre><code>unsigned long int reserved;
+unsigned long int size;
+void (*copy)(void *dst, void *src);
+void (*dispose)(void *);
+</code></pre>
+
+<p>};</p>
+
+<p>struct Block_layout {</p>
+
+<pre><code>void *isa;
+int flags;
+int reserved;
+void (*invoke)(void *, ...);
+struct Block_descriptor *descriptor;
+/* Imported variables. */
+</code></pre>
+
+<p>};</p>
+
+<p>```</p>
+
+<p>我们发现Block_layout中也有一个isa指针，像极了NSobject内部实现struct中的isa指针。这里的isa可能指向三种类型之一的Block：</p>
+
+<ul>
+<li>_NSConcreteGlobalBlock：全局类型Block，在编译器就已经确定，直接放在代码段__TEXT上。直接在NSLog中打印的类型为__NSGlobalBlock__。</li>
+<li>_NSConcreteStackBlock：位于栈上分配的Block，即__NSStaclBlock__。</li>
+<li>_NSConcreteMallocBlock：位于堆上分配的Block，即__NSMallocBlock__。</li>
+</ul>
+
+
+<p>为什么会有这么多种类呢？首先来看全局类型Block，看例子：</p>
+
+<p>```
+void addBlock(NSMutableArray *array) {
+  [array addObject:^{</p>
+
+<pre><code>printf("global block\n");
+</code></pre>
+
+<p>  }];
+}</p>
+
+<p>void example() {
+  NSMutableArray *array = [NSMutableArray array];
+  addBlock(array);
+  void (^block)() = [array objectAtIndex:0];
+  block();
+}</p>
+
+<p>```
+为什么addBlock中添加到array中的Block属于全局Block呢？因为它不需要运行时(Runtime)任何的状态来改变行为，不需要放在堆上或者栈上，直接编译后在代码段中即可，就像个c函数一样。这种类型的Block在ARC和non-ARC情况下没有差别。</p>
+
+<p>这个Block访问了作用域外的变量d，在实现上就是这个block会多一个成员变量对应这个d，在赋值<sup>block</sup>时会将方法exmpale中的d变量值复制到成员变量中，从而实现访问。</p>
+
+<p>```
+void example() {</p>
+
+<pre><code>int d = 5;
+void (^block)() = ^() {
+    printf("%d\n", d);
+};
+block();
+</code></pre>
+
+<p>}
+```</p>
+
+<p>如果要修改d呢？：</p>
+
+<p>```
+void example() {</p>
+
+<pre><code>int d = 5;
+void (^block)() = ^() {
+    d++;
+    printf("%d\n", d);
+};
+block();
+printf("%d\n", d);
+</code></pre>
+
+<p>}
+<code>``
+由于局部变量d和这个block的实现不在同一作用域，仅仅在调用过程中用到了值传递，所以不能直接修改，而需要加一个标识符</code><strong>block int d = 5;`，那么block就可以实现对这个局部变量的修改了。如果是这种</strong>block标识的变量，在Block实现中不再是简单的一个成员变量，而是对应一个新的结构体表示这个<strong>block变量。</strong>block的本质是引入了一个新的<strong>Block_byref<em>{$var_name}</em>{$index}结构体，被</strong>block关键字修饰的变量就被放到这个结构体中。另外，block结构体通过引入<em><em>Block_byref</em>{$var_name}</em>{$index}指针类型的成员，得以间接访问到Block的外部变量。这样对Block外的变量访问从值传递转变为引用，从而有了修改内容的能力。</p>
+
+<p>正常我们使用Block是在栈上生成的，离开了栈作用域便释放了，如果copy一个Block，那么会将这个Block copy到堆上分配，这样就不再受栈的限制，可以随意使用啦。例如：</p>
+
+<p>```
+typedef void (^TestBlock)();</p>
+
+<p>TestBlock getBlock() {
+  char e = 'E';
+  void (^returnedBlock)() = ^{</p>
+
+<pre><code>printf("%c\n", e);
+</code></pre>
+
+<p>  };
+  return returnedBlock;
+}</p>
+
+<p>void example() {
+  TestBlock block = getBlock();
+  block();
+}
+```</p>
+
+<p>函数getBlock中声明并赋值的returnedBlock，一开始是在栈上分配的，属于NSStackBlock，如果是non-ARC情况下return这个NSStackBlock，那么其实已经被销毁了，在函数中example()使用时就会crash。如果是ARC情况下，getBlock返回的block会自动copy到堆上，那么block的类型就是NSMallocBlock，可以在example()中继续使用。要在Non-ARC情况下正常运行，那么就应该修改为：</p>
+
+<p>```
+TestBlock getBlock() {
+  char e = 'E';
+  void (^returnedBlock)() = ^{</p>
+
+<pre><code>printf("%c\n", e);
+</code></pre>
+
+<p>  };
+  return [[returnedBlock copy] autorelease];
+}
+```</p>
+
+<h3>Block中的循环引用问题</h3>
+
+<p>扯了这么多，回到Block的循环引用问题，由于我们很多行为会导致Block的copy，而当Block被copy时，会对block中用到的对象产生强引用(ARC下)或者引用计数加一(non-ARC下)。</p>
+
+<p>如果遇到这种情况：</p>
+
+<p>```
+@property(nonatomic, readwrite, copy) completionBlock completionBlock;</p>
+
+<p>//========================================
+self.completionBlock = ^ {</p>
+
+<pre><code>    if (self.success) {
+        self.success(self.responseData);
+    }
+}
+</code></pre>
+
+<p>};
+```
+对象有一个Block属性，然而这个Block属性中又引用了对象的其他成员变量，那么就会对这个变量本身产生强应用，那么变量本身和他自己的Block属性就形成了循环引用。在ARC下需要修改成这样：</p>
+
+<p>```
+@property(nonatomic, readwrite, copy) completionBlock completionBlock;</p>
+
+<p>//========================================
+__weak typeof(self) weakSelf = self;
+self.completionBlock = ^ {</p>
+
+<pre><code>if (weakSelf.success) {
+    weakSelf.success(weakSelf.responseData);
+}
+</code></pre>
+
+<p>};
+<code>``
+也就是生成一个对自身对象的弱引用，如果是倒霉催的项目还需要支持iOS4.3，就用\_\_unsafe_unretained替代\_\_weak。如果是non-ARC环境下就将\_\_weak替换为\_\_block即可。non-ARC情况下，\_\_block变量的含义是在Block中引入一个新的结构体成员变量指向这个\_\_block变量，那么</code>__block typeof(self) weakSelf = self;`就表示Block别再对self对象retain啦，这就打破了循环引用。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes]]></title>
@@ -318,7 +507,7 @@ NSThread* aThread = [[NSThread alloc] initWithTarget:self selector:@selector(thr
 
 <p>归根结底，Run Loop就是个处理事件的机制，可以让你有机会唤醒休眠的(asleep)的线程来处理异步事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。</p>
 
-<p><img src="/images/post/runloop_source.jpg"></p>
+<p>{% img /images/post/runloop_source.jpg %}</p>
 
 <p>1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是<code>scheduledTimerWith****</code>开头生成的Timer会自动帮你加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用<code>-addTimer:forMode</code>添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。</p>
 
@@ -353,7 +542,7 @@ cancelPreviousPerformRequestsWithTarget:selector:object:</p>
 
 <p>Apple官方文档提供了一个自定义Input Source使用模式。</p>
 
-<p><img src="/images/post/input_source.jpg"></p>
+<p>{% img /images/post/input_source.jpg %}</p>
 
 <p>主线程持有子线程的Run Loop和Source，还有一个用于保存需要运行操作的数据buffer。主线程需要子线程干活时，首先将需要的操作数据添加到数据buffer，然后通知source，唤醒子线程Run Loop（因为子线程可能正在sleep状态，<code>CFRunLoopWakeUp</code>唤醒Run Loop可以通知线程醒来干活），由于子线程也持有这个source和数据buffer，因此在触发唤醒时可以使用这个数据buffer的数据来执行相关操作（需要注意数据buffer访问时的同步）。</p>
 
@@ -456,7 +645,7 @@ kCFRunLoopAllActivities = 0x0FFFFFFFU
 
 <h3>Sample Code</h3>
 
-<p>看的晕乎乎？理解概念最好的方式当然还是动手写代码，写了个例子放在<a href="https://github.com/hrchen/ExamplesForBlog">GitHub</a>上（工程NSThreadExample），欢迎讨论。</p>
+<p>RunLoop刚开始确实让人晕乎乎。理解概念最好的方式当然还是动手写代码，写了个例子放在<a href="https://github.com/hrchen/ExamplesForBlog">GitHub</a>上（工程NSThreadExample），欢迎大家讨论。</p>
 
 <p>Apple官方也有一个基于Run Loop的异步网络连接样例程序<a href="http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html">SimpleURLConnections</a>，值得一看。</p>
 
@@ -506,7 +695,7 @@ CFAbsoluteTime StartTime;int main(int argc, char **argv) {  StartTime = CFAbsolu
 
 <p>可能你会觉得为什么这样可拿到系统启动的时间，因为这个dispatch_async中提交的工作会在app主线程启动后的下一个run lopp中运行，此时app已经完成了载入并且将要显示第一帧画面，也就是系统会运行到<code>-[UIApplication _reportAppLaunchFinished]</code>之前。下图是用Instruments工具Time Profiler跑的调用栈，Instruments的使用方法建议看WWDC中与performance相关的<a href="https://developer.apple.com/videos/wwdc">session录像</a>，文字写起来太单薄不够直观哈。</p>
 
-<p><img src="/images/post/loading_app.png"></p>
+<p>{% img /images/post/loading_app.png %}</p>
 
 <p>从图中我们可以看到在系统调用<code>[UIApplication _reportAppLaunchFinished]</code>之前完成了系统回调<code>application:didFinishLaunchingWithOptions</code>。</p>
 
@@ -526,7 +715,7 @@ CFAbsoluteTime StartTime;int main(int argc, char **argv) {  StartTime = CFAbsolu
 
 <p>要让主线程的run loop更好的响应用户事件，工程师应该尽量减少主线程干重活的时间，尤其是读文件啊，网络操作啊，大量运算啊这类重活，如果是阻塞操作，那就更是大忌了。我们可以用多线程(NSThread、NSOperationQueue, GCD，下一篇Blog就会聊到这多线程)将重活移出主线程，这属于显式并发。还有种隐式并发，例如view和layer的动画、layer的绘制以及PNG图片的解码都是在另一个子线程中执行的。除了使用多线程技术减轻主线程的负担外，减少主线程中阻塞也是提升用户体验的一个方法。使用Instruments中Time Profiler工具中的"Recod thread waiting"选项可以统计出app运行时各个线程中的阻塞系统调用情况，例如文件读写read/write，网络读写send/recv，加锁psynch_mutex_wait等。Instruments中的System Trace工具则能够记录所有的底层系统调用。</p>
 
-<p><img src="/images/post/record_thread_waiting.png"></p>
+<p>{% img /images/post/record_thread_waiting.png %}</p>
 
 <h3>内存</h3>
 
@@ -536,17 +725,17 @@ CFAbsoluteTime StartTime;int main(int argc, char **argv) {  StartTime = CFAbsolu
 
 <p>现在有了超炫的ARC，内存问题相对少了很多，开发效率也得到了提高。但是很多公司的项目仍然由于历史原因采用了手动管理内存，该做的活还是少不了。Xcode自带的静态分析功能可以帮你提前发现一些问题，然而有些内存问题是无法用静态分析来发现的，例如我们不断使用内存没有及时释放的问题，就无法使用静态分析器分析出来。此时可以使用Instruments的Allocations和Leaks工具来检查运行时的的内存使用以及泄露问题。</p>
 
-<p><img src="/images/post/allocations.png"></p>
+<p>{% img /images/post/allocations.png %}</p>
 
 <p>Allocations工具可以很直观的反应app的内存使用情况，还有个很赞“Mark Heap”功能，在上图左边下半部分中的Heapshot Analysis中。例如你在进入一个页面前点击一下“Mark Heap”，然后再退回上一页面点击一下“Mark Heap”，如果你在进出这个页面里所申请的内存都得到了合理的释放，那么堆的内存增长量就应该降至0（见上图右下部分）。</p>
 
 <p>另一种严重的内存使用问题是引用了已经释放的内存，直接导致应用崩溃，而Allocation有一个选项Enable NSZombie detection能够在应用使用已经释放的内存时标注出来，同时显示错误发生的调用栈信息。这为解决问题提供了最直接的帮助，当然缺点是必须能够重现EXEC_BAD_ACCESS错误。</p>
 
-<p><img src="/images/post/zombies.png"></p>
+<p>{% img /images/post/zombies.png %}</p>
 
 <p>工具Leaks可以在应用运行时直接标示出存在内存泄露的代码，如果发生了内存泄露，可以从泄露详细信息中查看泄露的具体对象以及方法调用栈，大部分问题还是很好解决的。</p>
 
-<p><img src="/images/post/leak.png"></p>
+<p>{% img /images/post/leak.png %}</p>
 
 <h3>图形和动画</h3>
 
@@ -554,13 +743,13 @@ CFAbsoluteTime StartTime;int main(int argc, char **argv) {  StartTime = CFAbsolu
 
 <p>启动Instruments的Core Animation工具后可以发现左下部分有一堆选项，我们来逐个介绍：</p>
 
-<p><img src="/images/post/core_animation.png"></p>
+<p>{% img /images/post/core_animation.png %}</p>
 
 <p>1) Color Blended Layers</p>
 
 <p>Instruments可以在物理机上显示出被混合的图层Blended Layer(用红色标注)，Blended Layer是因为这些Layer是透明的(Transparent)，系统在渲染这些view时需要将该view和下层view混合(Blend)后才能计算出该像素点的实际颜色，如果这种blended layer很多，那么在滚动列表时就甭想有流畅的效果。</p>
 
-<p><img src="/images/post/color_blended_layer.png"></p>
+<p>{% img /images/post/color_blended_layer.png %}</p>
 
 <p>解决blended layer问题也很简单，检查红色区域view的opaque属性，记得设置成YES；检查backgroundColor属性是不是<code>[UIColor clearColor]</code>，要知道背景颜色为clear color那可是图形性能的大敌，基本意味着blended layer是跑不了的了，为什么？自己思考一下:)</p>
 
@@ -573,7 +762,7 @@ CFAbsoluteTime StartTime;int main(int argc, char **argv) {  StartTime = CFAbsolu
 
 <p>Misaligned Image表示要绘制的点无法直接映射到频幕上的像素点，此时系统需要对相邻的像素点做anti-aliasing反锯齿计算，增加了图形负担，通常这种问题出在对某些View的Frame重新计算和设置时产生的。</p>
 
-<p><img src="/images/post/color_misaligned_image.png"></p>
+<p>{% img /images/post/color_misaligned_image.png %}</p>
 
 <p>上图中被标注为黄色的图层，这是由于图层显示的是被缩放后的图片，如果这些图片是通过网络下载的，可以通过程序更新为确定的绘制大小来解决。还有些系统Navigation Bar和Tool Bar的背景图片使用的是拉伸(Streched)图片，也会被表示为黄色，这是属于正常情况，通常无需修改。这种问题一般对性能影响不大，而是可能会在边缘处虚化。</p>
 
@@ -603,11 +792,11 @@ Color Immediately选项表示Instruments在做color-flush操作时取消10毫秒
 
 <p>工具File Activity只能在模拟器中运行，因此数据采集可能不是非常准确。它同样可以详细给出读取的文件属性、大小、载入时间等信息，适合与System Usage配合使用。</p>
 
-<p><img src="/images/post/file_activity.png"></p>
+<p>{% img /images/post/file_activity.png %}</p>
 
 <p>Network工具则可以采集到应用的TCP/IP和UDP的使用信息(传输的数据量、当前所有TCP连接等)，用得不多，做网络使用状况分析时用用还行。</p>
 
-<p><img src="/images/post/instruments_networking.png"></p>
+<p>{% img /images/post/instruments_networking.png %}</p>
 
 <h3>更多阅读</h3>
 
