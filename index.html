@@ -7,7 +7,7 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="Jun 27th, 2013 iOS Block的引用循环问题 (ARC & non-ARC) 2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持， &hellip;">
+	<meta name="description" content="Jun 28th, 2013 iOS iOS多线程编程Part 2/3 - NSOperation 多线程编程Part 1介绍了NSThread以及NSRunLoop，这篇Blog介绍另一种并发编程技术：NSOPeration。 NSOperation &amp; &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -83,6 +83,48 @@
 			<div class="mid-col-container">
 				<div id="content" class="inner">
 <div itemscope itemtype="http://schema.org/Blog">
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-28T23:59:00+08:00" data-updated="true" itemprop="datePublished">Jun 28<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/multi-threading-programming-of-ios-part-2/" itemprop="url">iOS多线程编程Part 2/3 - NSOperation</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>多线程编程Part 1介绍了NSThread以及NSRunLoop，这篇Blog介绍另一种并发编程技术：NSOPeration。</p>
+
+<h3>NSOperation &amp; NSOperationQueue</h3>
+
+<p>从头文件NSOperation.h来看接口是非常的简洁，NSOperation本身是一个抽象类，定义了一个要执行的工作，NSOperationQueue是一个工作队列，当工作加入到队列后，NSOperationQueue会自动按照优先顺序及工作的从属依赖关系(如果有的话)组织执行。</p>
+
+<p>NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起<code>-start</code>也可以直接执行。</p>
+
+
+		
+		<a href="/2013/06/multi-threading-programming-of-ios-part-2/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
 
 
     <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">

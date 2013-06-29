@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-06-30T04:03:18+08:00</updated>
+  <updated>2013-06-30T04:04:31+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -12,6 +12,343 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS多线程编程Part 2/3 - NSOperation]]></title>
+    <link href="http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-2/"/>
+    <updated>2013-06-28T23:59:00+08:00</updated>
+    <id>http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-2</id>
+    <content type="html"><![CDATA[<p>多线程编程Part 1介绍了NSThread以及NSRunLoop，这篇Blog介绍另一种并发编程技术：NSOPeration。</p>
+
+<h3>NSOperation &amp; NSOperationQueue</h3>
+
+<p>从头文件NSOperation.h来看接口是非常的简洁，NSOperation本身是一个抽象类，定义了一个要执行的工作，NSOperationQueue是一个工作队列，当工作加入到队列后，NSOperationQueue会自动按照优先顺序及工作的从属依赖关系(如果有的话)组织执行。</p>
+
+<p>NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起<code>-start</code>也可以直接执行。</p>
+
+<!--more-->
+
+
+<p>在继承NSOpertaion后，对于非并发的工作，只需要实现NSOperation子类的main方法：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-(void)main 
+</span><span class='line'>{
+</span><span class='line'>   @try 
+</span><span class='line'>   {
+</span><span class='line'>      // 处理工作任务
+</span><span class='line'>   }
+</span><span class='line'>   @catch(...) 
+</span><span class='line'>   {
+</span><span class='line'>      // 处理异常，但是不能再重新抛出异常
+</span><span class='line'>   }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>由于NSOperation的工作是可以取消Cancel的，那么你在main方法处理工作时就需要不断轮询<code>[self isCancelled]</code>确认当前的工作是否被取消了。</p>
+
+<p>如果要支持并发工作，那么NSOperation子类需要至少override这四个方法:</p>
+
+<ul>
+<li>start</li>
+<li>isConcurrent</li>
+<li>isExecuting</li>
+<li>isFinished</li>
+</ul>
+
+
+<p>实现了一个基于Operation的下载器，在Sample Code中可以下载。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)operationDidStart
+</span><span class='line'>{
+</span><span class='line'>    [self.lock lock];
+</span><span class='line'>    NSMutableURLRequest* request = [[NSMutableURLRequest alloc] initWithURL:self.URL
+</span><span class='line'>                                                                cachePolicy:NSURLRequestReloadIgnoringCacheData
+</span><span class='line'>                                                            timeoutInterval:self.timeoutInterval];
+</span><span class='line'>    [request setHTTPMethod: @"GET"];
+</span><span class='line'>    
+</span><span class='line'>    self.connection =[[NSURLConnection alloc] initWithRequest:request
+</span><span class='line'>                                                     delegate:self
+</span><span class='line'>                                             startImmediately:NO];
+</span><span class='line'>    [self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+</span><span class='line'>    [self.connection start];
+</span><span class='line'>    [self.lock unlock];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>- (void)operationDidFinish
+</span><span class='line'>{
+</span><span class='line'>    [self.lock lock];
+</span><span class='line'>    [self willChangeValueForKey:@"isFinished"];
+</span><span class='line'>    [self willChangeValueForKey:@"isExecuting"];
+</span><span class='line'>    
+</span><span class='line'>    self.executing = NO;
+</span><span class='line'>    self.finished = YES;
+</span><span class='line'>    
+</span><span class='line'>    [self didChangeValueForKey:@"isExecuting"];
+</span><span class='line'>    [self didChangeValueForKey:@"isFinished"];
+</span><span class='line'>    [self.lock unlock];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>- (void)start
+</span><span class='line'>{
+</span><span class='line'>    [self.lock lock];
+</span><span class='line'>    if ([self isCancelled])
+</span><span class='line'>    {
+</span><span class='line'>        [self willChangeValueForKey:@"isFinished"];
+</span><span class='line'>        self.finished = YES;
+</span><span class='line'>        [self didChangeValueForKey:@"isFinished"];
+</span><span class='line'>        return;
+</span><span class='line'>    }
+</span><span class='line'>    
+</span><span class='line'>    [self willChangeValueForKey:@"isExecuting"];
+</span><span class='line'>    [self performSelector:@selector(operationDidStart) onThread:[[self class] networkThread] withObject:nil waitUntilDone:NO];
+</span><span class='line'>    self.executing = YES;
+</span><span class='line'>    [self didChangeValueForKey:@"isExecuting"];
+</span><span class='line'>    [self.lock unlock];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>- (void)cancel
+</span><span class='line'>{
+</span><span class='line'>    [self.lock lock];
+</span><span class='line'>    [super cancel];
+</span><span class='line'>    if (self.connection)
+</span><span class='line'>    {
+</span><span class='line'>        [self.connection cancel];
+</span><span class='line'>        self.connection = nil;
+</span><span class='line'>    }
+</span><span class='line'>    
+</span><span class='line'>    [self.lock unlock];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>- (BOOL)isConcurrent {
+</span><span class='line'>    return YES;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>- (BOOL)isExecuting {
+</span><span class='line'>    return self.executing;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>- (BOOL)isFinished {
+</span><span class='line'>    return self.finished;
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
+
+<p>注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation有许多支持KVO的属性：</p>
+
+<ul>
+<li>isCancelled</li>
+<li>isConcurrent</li>
+<li>isExecuting</li>
+<li>isFinished</li>
+<li>isReady</li>
+<li>dependencies</li>
+<li>queuePriority</li>
+<li>completionBlock</li>
+</ul>
+
+
+<p>当然也不是说所有的KVO通知都需要自己去实现，例如通常你用不到addObserver到你工作的“isCancelled”属性，你只需要直接调用cancel方法就可以取消这个工作任务。</p>
+
+<p>实现NSOperation子类后，可以直接调用start或者添加到一个NSOperationQueue里：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+</span><span class='line'>[queue addOperation:downloader];
+</span><span class='line'>    </span></code></pre></td></tr></table></div></figure>
+
+
+<h3>NSOperation和NSOperationQueue其他特性</h3>
+
+<p>工作是有优先级的，可以通过NSOperation的一下两个接口读取或者设置：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (NSOperationQueuePriority)queuePriority;
+</span><span class='line'>- (void)setQueuePriority:(NSOperationQueuePriority)p;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>工作之间也可有从属依赖关系，只有依赖的工作完成后才会执行：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)addDependency:(NSOperation *)op;
+</span><span class='line'>- (void)removeDependency:(NSOperation *)op;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>还可以通过下面接口设置运行NSOpration的子线程优先级：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)setQueuePriority:(NSOperationQueuePriority)priority;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>iOS4之后还可以往NSOperation上添加一个结束block，用于在工作执行结束之后的操作：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)setCompletionBlock:(void (^)(void))block;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果需要阻塞等待NSOperation工作结束(别在主线程这么干)，可以使用接口：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)waitUntilFinished;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>NSOperationQueue除了添加NSOperation外，也支持直接添加一个Block(iOS4之后)：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)addOperationWithBlock:(void (^)(void))block</span></code></pre></td></tr></table></div></figure>
+
+
+<p>NSOperationQueue可以取消所有添加的工作：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)cancelAllOperations;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>也可以阻塞式的等待所有工作结束(别在主线程这么干)：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)waitUntilAllOperationsAreFinished;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在NSOperation对象中获得被添加的NSOperationQueue队列：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (id)currentQueue</span></code></pre></td></tr></table></div></figure>
+
+
+<p>要获得一个绑定在主线程的NSOperationQueue队列：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (id)mainQueue</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>NSInvocationOperation &amp; NSBlockOperation</h3>
+
+<p>其实除非必要，简单的工作完全可以使用官方提供的NSOperation两个子类NSInvocationOperation和NSBlockOperation来实现。</p>
+
+<p>NSInvocationOperation：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>NSInvocationOperation* theOp = [[NSInvocationOperation alloc]    
+</span><span class='line'>                       initWithTarget:self                                                              selector:@selector(myTaskMethod:)                                                           
+</span><span class='line'>                            object:data];</span></code></pre></td></tr></table></div></figure>
+
+
+<p>NSBlockOperation:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>NSBlockOperation* theOp = [NSBlockOperation blockOperationWithBlock: ^{
+</span><span class='line'>      NSLog(@"Beginning operation.\n");
+</span><span class='line'>      // Do some work.
+</span><span class='line'>   }];</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接口非常简单，一看便会。</p>
+
+<h3>Sample Code</h3>
+
+<p>本文例子放在<a href="https://github.com/hrchen/ExamplesForBlog">Github</a>上（工程NSURLConnectionExample中的PTOperationDownloader）。</p>
+
+<h3>参考资料</h3>
+
+<p><a href="http://developer.apple.com/library/mac/#documentation/General/Conceptual/ConcurrencyProgrammingGuide/OperationObjects/OperationObjects.html">Concurrency Programming Guide</a></p>
+
+<p><a href="http://developer.apple.com/library/mac/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html">NSOperation Class Reference</a></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Block的引用循环问题 (ARC & non-ARC)]]></title>
