@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-06-30T02:04:04+08:00</updated>
+  <updated>2013-06-30T04:03:18+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -18,7 +18,7 @@
     <link href="http://hrchen.com/2013/06/retain-cycle-in-block/"/>
     <updated>2013-06-27T00:32:00+08:00</updated>
     <id>http://hrchen.com/2013/06/retain-cycle-in-block</id>
-    <content type="html"><![CDATA[<p>2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持，第一次使用Block感觉满简单好用的，但是慢慢也遇到很多坑，先来套<a href="http://blog.parse.com/2013/02/05/objective-c-blocks-quiz/">题目</a>热热身，貌似能够全部答对的人蛮少的。本文聊聊ARC和non-ARC下Block使用中的引用循环问题，最近遇到了好几次这种问题，还是深入记录下。</p>
+    <content type="html"><![CDATA[<p>2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持，第一次使用Block感觉满简单好用的，但是慢慢也遇到很多坑。本文聊聊ARC和non-ARC下Block使用中的引用循环问题，最近遇到了好几次这种问题，还是深入记录下。先来套<a href="http://blog.parse.com/2013/02/05/objective-c-blocks-quiz/">题目</a>热热身，貌似能够全部答对的人蛮少的</p>
 
 <h3>Block实现原理</h3>
 
