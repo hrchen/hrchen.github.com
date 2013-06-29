@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-06-30T04:04:31+08:00</updated>
+  <updated>2013-06-30T04:06:49+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -239,7 +239,8 @@ NSOperationQueue *queue = [[NSOperationQueue alloc] init];
 <p>```
 NSInvocationOperation* theOp = [[NSInvocationOperation alloc]</p>
 
-<pre><code>                   initWithTarget:self                                                            selector:@selector(myTaskMethod:)                                                           
+<pre><code>                   initWithTarget:self                 
+                      selector:@selector(myTaskMethod:)                                           
                         object:data];
 </code></pre>
 
