@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-06-30T11:45:05+08:00</updated>
+  <updated>2013-06-30T13:43:42+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -69,6 +69,8 @@
 <p>由于生成NSURLConnectin对象传入delegate参数时类型就是id，而不是传统id&lt;***Delegate>形式，那么如何确定当前代理实现的是什么类型的NSURLConnectionDelegate代理呢？方法也很诡异，如果你的代理实现了connectionDidFinishDownloading:destinationURL:，那么就表示你要实现的是NSURLConnectionDownloadDelegate，NSURLConnectionDataDelegate中的connection:DidReceiveData就不会得到回调，即使你实现了它。道理很简单，这两类代理一个是用于将下载数据保存到文件上，另一个是保存到内存中，只能两者居其一。</p>
 
 <p>故事还没有结束 ，如果你实现了connectionDidFinishDownloading:destinationURL并且想通过回到得到的destinationURL读取保存数据的文件时，令人惊讶的发现这个文件居然不存在，因为这类NSURLConnectionDataDelegate回调是用于Newsstand类型的App开发的，用于将杂志等信息保存到本地文件。实在想不通为什么只有Newsstand类型App才能用这组接口，很多开发者早已发了bug报告给Apple，Apple也已经确认，但是从iOS5到了iOS7，这个“bug”还是没有被修复。</p>
+
+<p>附带我在Stackoverflow上的<a href="http://stackoverflow.com/questions/11047169/how-may-delegate-method-from-one-protocol-prevent-execution-of-another-one-from/17369617#17369617">回答</a>。</p>
 ]]></content>
   </entry>
   
