@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-06-30T13:43:42+08:00</updated>
+  <updated>2013-06-30T13:49:21+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -51,11 +51,12 @@
                                                totalBytesWritten:(NSInteger)totalBytesWritten
                                        totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;</p></li>
 <li><p>(NSCachedURLResponse <em>)connection:(NSURLConnection </em>)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse;</p></li>
-<li><p>(void)connectionDidFinishLoading:(NSURLConnection *)connection;
-```</p></li>
-<li>NSURLConnectionDownloadDelegate：用于将网络资源直接保存到文件中的代理方法，除了connectionDidFinishDownloading:destinationURL:都是Optional的方法。connectionDidFinishDownloading:destinationURL回调可以告知你下载的网络数据最终存放的文件位置，正常都是在iPhone应用沙盒的/tmp目录下。</li>
+<li><p>(void)connectionDidFinishLoading:(NSURLConnection *)connection;</p></li>
 </ul>
 
+
+<p>```
+* NSURLConnectionDownloadDelegate：用于将网络资源直接保存到文件中的代理方法，除了connectionDidFinishDownloading:destinationURL:都是Optional的方法。connectionDidFinishDownloading:destinationURL回调可以告知你下载的网络数据最终存放的文件位置，正常都是在iPhone应用沙盒的/tmp目录下。</p>
 
 <p>```
 @optional
@@ -63,8 +64,9 @@
 - (void)connectionDidResumeDownloading:(NSURLConnection </em>)connection totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;</p>
 
 <p>@required
-- (void)connectionDidFinishDownloading:(NSURLConnection <em>)connection destinationURL:(NSURL </em>) destinationURL;
-```</p>
+- (void)connectionDidFinishDownloading:(NSURLConnection <em>)connection destinationURL:(NSURL </em>) destinationURL;</p>
+
+<p>```</p>
 
 <p>由于生成NSURLConnectin对象传入delegate参数时类型就是id，而不是传统id&lt;***Delegate>形式，那么如何确定当前代理实现的是什么类型的NSURLConnectionDelegate代理呢？方法也很诡异，如果你的代理实现了connectionDidFinishDownloading:destinationURL:，那么就表示你要实现的是NSURLConnectionDownloadDelegate，NSURLConnectionDataDelegate中的connection:DidReceiveData就不会得到回调，即使你实现了它。道理很简单，这两类代理一个是用于将下载数据保存到文件上，另一个是保存到内存中，只能两者居其一。</p>
 

@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-06-30T13:43:42+08:00</updated>
+  <updated>2013-06-30T13:49:21+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -75,7 +75,8 @@
 </span><span class='line'>
 </span><span class='line'>- (NSCachedURLResponse *)connection:(NSURLConnection *)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse;
 </span><span class='line'>
-</span><span class='line'>- (void)connectionDidFinishLoading:(NSURLConnection *)connection;</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>- (void)connectionDidFinishLoading:(NSURLConnection *)connection;
+</span></code></pre></td></tr></table></div></figure>
 
 
 <ul>
@@ -94,7 +95,8 @@
 </span><span class='line'>- (void)connectionDidResumeDownloading:(NSURLConnection *)connection totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;
 </span><span class='line'>
 </span><span class='line'>@required
-</span><span class='line'>- (void)connectionDidFinishDownloading:(NSURLConnection *)connection destinationURL:(NSURL *) destinationURL;</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>- (void)connectionDidFinishDownloading:(NSURLConnection *)connection destinationURL:(NSURL *) destinationURL;
+</span></code></pre></td></tr></table></div></figure>
 
 
 <p>由于生成NSURLConnectin对象传入delegate参数时类型就是id，而不是传统id&lt;***Delegate>形式，那么如何确定当前代理实现的是什么类型的NSURLConnectionDelegate代理呢？方法也很诡异，如果你的代理实现了connectionDidFinishDownloading:destinationURL:，那么就表示你要实现的是NSURLConnectionDownloadDelegate，NSURLConnectionDataDelegate中的connection:DidReceiveData就不会得到回调，即使你实现了它。道理很简单，这两类代理一个是用于将下载数据保存到文件上，另一个是保存到内存中，只能两者居其一。</p>
