@@ -13,16 +13,7 @@ categories: iOS
 
 ### 启动时间
 应用启动时间长短对用户第一次体验至关重要，同时系统对应用的启动、恢复等状态的运行时间也有严格的要求，在应用超时的情况下系统会直接关闭应用。以下是几个常见场景下系统对app运行时间的要求：
-
-* Launch	20秒
-* Resume	10秒
-
-* Suspend	10秒
-
-* Quit	6秒
-
-* Background Task	10分钟
-
+* Launch	20秒* Resume	10秒* Suspend	10秒* Quit	6秒* Background Task	10分钟
 
 <!-- more -->
 
@@ -30,12 +21,11 @@ categories: iOS
 
 ```objc
 CFAbsoluteTime StartTime;int main(int argc, char **argv) {	StartTime = CFAbsoluteTimeGetCurrent();
-```然后在AppDelegate的回调方法`application:didFinishLaunchingWithOptions`中添加：
+```然后在AppDelegate的回调方法`application:didFinishLaunchingWithOptions`中添加：
 
 	dispatch_async(dispatch_get_main_queue(), ^{
 		NSLog(@”Lauched in %f seconds.”,  (CFAbsoluteTimeGetCurrent() – StartTime)); 
-	});
-可能你会觉得为什么这样可拿到系统启动的时间，因为这个dispatch_async中提交的工作会在app主线程启动后的下一个run lopp中运行，此时app已经完成了载入并且将要显示第一帧画面，也就是系统会运行到`-[UIApplication _reportAppLaunchFinished]`之前。下图是用Instruments工具Time Profiler跑的调用栈，Instruments的使用方法建议看WWDC中与performance相关的[session录像](https://developer.apple.com/videos/wwdc)，文字写起来太单薄不够直观哈。
+	});可能你会觉得为什么这样可拿到系统启动的时间，因为这个dispatch_async中提交的工作会在app主线程启动后的下一个run lopp中运行，此时app已经完成了载入并且将要显示第一帧画面，也就是系统会运行到`-[UIApplication _reportAppLaunchFinished]`之前。下图是用Instruments工具Time Profiler跑的调用栈，Instruments的使用方法建议看WWDC中与performance相关的[session录像](https://developer.apple.com/videos/wwdc)，文字写起来太单薄不够直观哈。
 
 {% img /images/post/loading_app.png %}
 
