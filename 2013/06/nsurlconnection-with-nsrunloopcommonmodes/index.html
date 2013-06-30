@@ -3,11 +3,11 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes - hrchen's blogging</title>
+	<title>一个异步网络请求的坑：关于NSURLConnection和NSRunLoopCommonModes - hrchen's blogging</title>
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes 我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有ASIHTTPRequest（已经停止开发维护）和AFNetWorking。 &hellip;">
+	<meta name="description" content="一个异步网络请求的坑：关于NSURLConnection和NSRunLoopCommonModes 我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有ASIHTTPRequest（已经停止开发维护）和AFNetWorking。 &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -82,7 +82,7 @@
 			
 			<div class="mid-col-container">
 				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
-	<h1 class="title" itemprop="name">一个异步网络请求问题：关于NSURLConnection和NSRunLoopCommonModes</h1>
+	<h1 class="title" itemprop="name">一个异步网络请求的坑：关于NSURLConnection和NSRunLoopCommonModes</h1>
 	<div class="entry-content" itemprop="articleBody"><p>我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有<a href="https://github.com/pokeb/asi-http-request/">ASIHTTPRequest</a>（已经停止开发维护）和<a href="https://github.com/AFNetworking/AFNetworking">AFNetWorking</a>。两者实现异步网络请求的方式不太相同，ASIHTTPRequest使用的是一个公共独立子线程和CFNetWork API的技术：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
