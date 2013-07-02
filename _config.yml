@@ -4,7 +4,7 @@
 
 url: http://hrchen.com
 title: hrchen's blogging
-subtitle: Mobile Dev (dr.hrchen#gmail.com)
+subtitle: Mobile Dev (dr.hrchen@gmail.com)
 author: hrchen
 simple_search: http://google.com/search
 description: CS Ph.D，专注移动产品开发，了解点后端
@@ -100,5 +100,3 @@ weibo_user: dr_hrchen
 # LinkedIn
 #linkedin_user: hrchen
 
-# Pinterest
-pinterest_user:
