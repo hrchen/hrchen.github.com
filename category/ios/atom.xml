@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-03T01:17:08+08:00</updated>
+  <updated>2013-07-03T01:19:04+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -14,73 +14,10 @@
 
   
   <entry>
-    <title type="html"><![CDATA[一个NSURLConnectionDelegate的坑]]></title>
-    <link href="http://hrchen.com/2013/06/tricky-nsurlconnectiondelegate/"/>
-    <updated>2013-06-30T04:20:00+08:00</updated>
-    <id>http://hrchen.com/2013/06/tricky-nsurlconnectiondelegate</id>
-    <content type="html"><![CDATA[<p>NSURLConnection的坑还是蛮多的，上次是<a href="http://www.hrchen.com/2013/06/nsurlconnection-with-nsrunloopcommonmodes/">RunLoopMode的问题</a>，这次是关于NSURLConnectionDelegate。</p>
-
-<p>NSURLConnection的代理Protocol定义有三类：NSURLConnectionDelegate、NSURLConnectionDataDelegate和NSURLConnectionDownloadDelegate。</p>
-
-<ul>
-<li>NSURLConnectionDelegate：所有类型NSURLConnection的基础代理方法，都是Optional的方法，主要是涉及SSL/TSL加密的相关接口。</li>
-</ul>
-
-
-<p>```
-@optional
-- (void)connection:(NSURLConnection <em>)connection didFailWithError:(NSError </em>)error;
-- (BOOL)connectionShouldUseCredentialStorage:(NSURLConnection <em>)connection;
-- (void)connection:(NSURLConnection </em>)connection willSendRequestForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;</p>
-
-<p>```
-* NSURLConnectionDataDelegate：用于将网络请求的数据存放到内存中(以NSData的形式)的代理方法。所有方法都是Optional的。</p>
-
-<!--more-->
-
-
-<p>```
-@optional
-- (NSURLRequest <em>)connection:(NSURLConnection </em>)connection willSendRequest:(NSURLRequest <em>)request redirectResponse:(NSURLResponse </em>)response;
-- (void)connection:(NSURLConnection <em>)connection didReceiveResponse:(NSURLResponse </em>)response;</p>
-
-<ul>
-<li><p>(void)connection:(NSURLConnection <em>)connection didReceiveData:(NSData </em>)data;</p></li>
-<li><p>(NSInputStream <em>)connection:(NSURLConnection </em>)connection needNewBodyStream:(NSURLRequest *)request;</p></li>
-<li><p>(void)connection:(NSURLConnection *)connection   didSendBodyData:(NSInteger)bytesWritten
-                                               totalBytesWritten:(NSInteger)totalBytesWritten
-                                       totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;</p></li>
-<li><p>(NSCachedURLResponse <em>)connection:(NSURLConnection </em>)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse;</p></li>
-<li><p>(void)connectionDidFinishLoading:(NSURLConnection *)connection;</p></li>
-</ul>
-
-
-<p>```
-* NSURLConnectionDownloadDelegate：用于将网络资源直接保存到文件中的代理方法，除了connectionDidFinishDownloading:destinationURL:都是Optional的方法。connectionDidFinishDownloading:destinationURL回调可以告知你下载的网络数据最终存放的文件位置，正常都是在iPhone应用沙盒的/tmp目录下。</p>
-
-<p>```
-@optional
-- (void)connection:(NSURLConnection <em>)connection didWriteData:(long long)bytesWritten totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;
-- (void)connectionDidResumeDownloading:(NSURLConnection </em>)connection totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;</p>
-
-<p>@required
-- (void)connectionDidFinishDownloading:(NSURLConnection <em>)connection destinationURL:(NSURL </em>) destinationURL;</p>
-
-<p>```</p>
-
-<p>由于生成NSURLConnectin对象传入delegate参数时类型就是id，而不是传统id&lt;***Delegate>形式，那么如何确定当前代理实现的是什么类型的NSURLConnectionDelegate代理呢？方法也很诡异，如果你的代理实现了connectionDidFinishDownloading:destinationURL:，那么就表示你要实现的是NSURLConnectionDownloadDelegate，NSURLConnectionDataDelegate中的connection:DidReceiveData就不会得到回调，即使你实现了它。道理很简单，这两类代理一个是用于将下载数据保存到文件上，另一个是保存到内存中，只能两者居其一。</p>
-
-<p>故事还没有结束 ，如果你实现了connectionDidFinishDownloading:destinationURL并且想通过回到得到的destinationURL读取保存数据的文件时，令人惊讶的发现这个文件居然不存在，因为这类NSURLConnectionDataDelegate回调是用于Newsstand类型的App开发的，用于将杂志等信息保存到本地文件。实在想不通为什么只有Newsstand类型App才能用这组接口，很多开发者早已发了bug报告给Apple，Apple也已经确认，但是从iOS5到了iOS7，这个“bug”还是没有被修复。</p>
-
-<p>附带我在Stackoverflow上的<a href="http://stackoverflow.com/questions/11047169/how-may-delegate-method-from-one-protocol-prevent-execution-of-another-one-from/17369617#17369617">回答</a>。</p>
-]]></content>
-  </entry>
-  
-  <entry>
     <title type="html"><![CDATA[iOS多线程编程Part 3/3 - GCD]]></title>
-    <link href="http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-3/"/>
-    <updated>2013-06-28T23:59:00+08:00</updated>
-    <id>http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-3</id>
+    <link href="http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/"/>
+    <updated>2013-07-02T21:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3</id>
     <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。</p>
 
 <h3>前言</h3>
@@ -306,6 +243,69 @@ return theManager;
 <p><a href="https://developer.apple.com/library/mac/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html">Grand Central Dispatch (GCD) Reference</a></p>
 
 <p><a href="https://developer.apple.com/library/ios/#documentation/Cocoa/Conceptual/Blocks/Articles/00_Introduction.html">Blocks Programming Topics</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[一个NSURLConnectionDelegate的坑]]></title>
+    <link href="http://hrchen.com/2013/06/tricky-nsurlconnectiondelegate/"/>
+    <updated>2013-06-30T04:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/06/tricky-nsurlconnectiondelegate</id>
+    <content type="html"><![CDATA[<p>NSURLConnection的坑还是蛮多的，上次是<a href="http://www.hrchen.com/2013/06/nsurlconnection-with-nsrunloopcommonmodes/">RunLoopMode的问题</a>，这次是关于NSURLConnectionDelegate。</p>
+
+<p>NSURLConnection的代理Protocol定义有三类：NSURLConnectionDelegate、NSURLConnectionDataDelegate和NSURLConnectionDownloadDelegate。</p>
+
+<ul>
+<li>NSURLConnectionDelegate：所有类型NSURLConnection的基础代理方法，都是Optional的方法，主要是涉及SSL/TSL加密的相关接口。</li>
+</ul>
+
+
+<p>```
+@optional
+- (void)connection:(NSURLConnection <em>)connection didFailWithError:(NSError </em>)error;
+- (BOOL)connectionShouldUseCredentialStorage:(NSURLConnection <em>)connection;
+- (void)connection:(NSURLConnection </em>)connection willSendRequestForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;</p>
+
+<p>```
+* NSURLConnectionDataDelegate：用于将网络请求的数据存放到内存中(以NSData的形式)的代理方法。所有方法都是Optional的。</p>
+
+<!--more-->
+
+
+<p>```
+@optional
+- (NSURLRequest <em>)connection:(NSURLConnection </em>)connection willSendRequest:(NSURLRequest <em>)request redirectResponse:(NSURLResponse </em>)response;
+- (void)connection:(NSURLConnection <em>)connection didReceiveResponse:(NSURLResponse </em>)response;</p>
+
+<ul>
+<li><p>(void)connection:(NSURLConnection <em>)connection didReceiveData:(NSData </em>)data;</p></li>
+<li><p>(NSInputStream <em>)connection:(NSURLConnection </em>)connection needNewBodyStream:(NSURLRequest *)request;</p></li>
+<li><p>(void)connection:(NSURLConnection *)connection   didSendBodyData:(NSInteger)bytesWritten
+                                               totalBytesWritten:(NSInteger)totalBytesWritten
+                                       totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;</p></li>
+<li><p>(NSCachedURLResponse <em>)connection:(NSURLConnection </em>)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse;</p></li>
+<li><p>(void)connectionDidFinishLoading:(NSURLConnection *)connection;</p></li>
+</ul>
+
+
+<p>```
+* NSURLConnectionDownloadDelegate：用于将网络资源直接保存到文件中的代理方法，除了connectionDidFinishDownloading:destinationURL:都是Optional的方法。connectionDidFinishDownloading:destinationURL回调可以告知你下载的网络数据最终存放的文件位置，正常都是在iPhone应用沙盒的/tmp目录下。</p>
+
+<p>```
+@optional
+- (void)connection:(NSURLConnection <em>)connection didWriteData:(long long)bytesWritten totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;
+- (void)connectionDidResumeDownloading:(NSURLConnection </em>)connection totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;</p>
+
+<p>@required
+- (void)connectionDidFinishDownloading:(NSURLConnection <em>)connection destinationURL:(NSURL </em>) destinationURL;</p>
+
+<p>```</p>
+
+<p>由于生成NSURLConnectin对象传入delegate参数时类型就是id，而不是传统id&lt;***Delegate>形式，那么如何确定当前代理实现的是什么类型的NSURLConnectionDelegate代理呢？方法也很诡异，如果你的代理实现了connectionDidFinishDownloading:destinationURL:，那么就表示你要实现的是NSURLConnectionDownloadDelegate，NSURLConnectionDataDelegate中的connection:DidReceiveData就不会得到回调，即使你实现了它。道理很简单，这两类代理一个是用于将下载数据保存到文件上，另一个是保存到内存中，只能两者居其一。</p>
+
+<p>故事还没有结束 ，如果你实现了connectionDidFinishDownloading:destinationURL并且想通过回到得到的destinationURL读取保存数据的文件时，令人惊讶的发现这个文件居然不存在，因为这类NSURLConnectionDataDelegate回调是用于Newsstand类型的App开发的，用于将杂志等信息保存到本地文件。实在想不通为什么只有Newsstand类型App才能用这组接口，很多开发者早已发了bug报告给Apple，Apple也已经确认，但是从iOS5到了iOS7，这个“bug”还是没有被修复。</p>
+
+<p>附带我在Stackoverflow上的<a href="http://stackoverflow.com/questions/11047169/how-may-delegate-method-from-one-protocol-prevent-execution-of-another-one-from/17369617#17369617">回答</a>。</p>
 ]]></content>
   </entry>
   
