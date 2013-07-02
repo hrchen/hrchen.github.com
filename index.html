@@ -168,6 +168,62 @@
 </div>
 		
 	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/multi-threading-programming-of-ios-part-3/" itemprop="url">iOS多线程编程Part 3/3 - GCD</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。</p>
+
+<h3>前言</h3>
+
+<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的low level的C接口，基本功能非常类似NSOperation，允许将工作分解成互不相关的子任务串行或者并行的添加到工作队列中，由于接近系统底层，因此性能比NSOperation要好，但是并不属于Cocoa框架。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+</span><span class='line'>    [self doTask];
+</span><span class='line'>    NSLog(@"Fisinished");
+</span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
+
+
+<p>另外，GCD是开源的喔：<a href="http://libdispatch.macosforge.org/">libdispatch</a></p>
+
+<h3>Dispatch Queue</h3>
+
+<p>要添加工作到队列Dispatch Queue中，这个队列可以是串行或者并行的，并行队列会尽可能的并发执行其中的工作任务，而串行队列每次只能运行一个工作任务。</p>
+
+
+		
+		<a href="/2013/06/multi-threading-programming-of-ios-part-3/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-28T23:59:00+08:00" data-updated="true" itemprop="datePublished">Jun 28<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
 	<h1 class="title" itemprop="name"><a href="/2013/06/multi-threading-programming-of-ios-part-2/" itemprop="url">iOS多线程编程Part 2/3 - NSOperation</a></h1>
 	<div class="entry-content" itemprop="articleBody">
 		<p>多线程编程Part 1介绍了NSThread以及NSRunLoop，这篇Blog介绍另一种并发编程技术：NSOPeration。</p>
