@@ -7,7 +7,7 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="iOS多线程编程Part 3/3 - GCD 前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。 前言 GCD: Grand Central Dispatch，是一组用于实现并发编程的low level的C接口， &hellip;">
+	<meta name="description" content="iOS多线程编程Part 3/3 - GCD 前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。 前言 GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。 &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -87,7 +87,7 @@
 
 <h3>前言</h3>
 
-<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的low level的C接口，基本功能非常类似NSOperation，允许将工作分解成互不相关的子任务串行或者并行的添加到工作队列中，由于接近系统底层，因此性能比NSOperation要好，但是并不属于Cocoa框架。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
+<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>

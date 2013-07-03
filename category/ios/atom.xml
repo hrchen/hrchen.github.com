@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-03T01:19:04+08:00</updated>
+  <updated>2013-07-03T23:24:18+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -12,6 +12,42 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[关于+initialize和+load的坑]]></title>
+    <link href="http://hrchen.com/2013/07/tricky-initialize-and-load/"/>
+    <updated>2013-07-03T22:29:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/tricky-initialize-and-load</id>
+    <content type="html"><![CDATA[<p>NSObject有两个特殊的类方法+initialize和+load。+initialize会在类的任何其他函数调用前被调用，因此也可以利用这个特性实现Singleton单例：</p>
+
+<p>```
+static Manager +theManager = nil;</p>
+
+<ul>
+<li><p>(void) initialize
+{
+  if (self == [Manager class])
+  {
+      theManager = [[Manager alloc] init];
+  }
+}</p></li>
+<li><p>(Manager *)sharedObj
+{
+return theManager;
+}
+```</p></li>
+</ul>
+
+
+<p>+load方法是在所在类加载到系统的时候被调用，这通常会比+initialized调用的时机要早，不过通常由于运行环境还有太多不确定性，不建议在+load中调用实际的方法。虽然Apple文档里说+initialized和+load都只会被执行一次，但是这里有坑。</p>
+
+<p>如果子类里没有实现+initialized而父类里面实现了+initialized，那么用到子类时，不是说一定要生成对象，+initialize是调用任何方法，包括类方法，例如[SubClass class]，那么父类的+initialized就会被执行两次！解决办法也很简单，就像开头的写法<code>if (self == [Manager class])</code>，先判断下是不是当前类的类型。</p>
+
+<p>那么对于+load呢？如果你在类的实现中实现了+load，但是在这个类的Category中又实现了一个+load，那么这两个+load都会被调用。</p>
+
+<p>既然这两个方法都是如此的诡异，所以除非必要，最好都不要在这两个方法中执行太多的操作，尤其是+load。绕过坑，远离危险。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOS多线程编程Part 3/3 - GCD]]></title>
@@ -22,7 +58,7 @@
 
 <h3>前言</h3>
 
-<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的low level的C接口，基本功能非常类似NSOperation，允许将工作分解成互不相关的子任务串行或者并行的添加到工作队列中，由于接近系统底层，因此性能比NSOperation要好，但是并不属于Cocoa框架。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
+<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
 
 <p>```
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{</p>
@@ -754,137 +790,6 @@ self.completionBlock = ^ {</p>
 <p>};
 <code>``
 也就是生成一个对自身对象的弱引用，如果是倒霉催的项目还需要支持iOS4.3，就用\_\_unsafe_unretained替代\_\_weak。如果是non-ARC环境下就将\_\_weak替换为\_\_block即可。non-ARC情况下，\_\_block变量的含义是在Block中引入一个新的结构体成员变量指向这个\_\_block变量，那么</code>__block typeof(self) weakSelf = self;`就表示Block别再对self对象retain啦，这就打破了循环引用。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[一个异步网络请求的坑：关于NSURLConnection和NSRunLoopCommonModes]]></title>
-    <link href="http://hrchen.com/2013/06/nsurlconnection-with-nsrunloopcommonmodes/"/>
-    <updated>2013-06-24T16:15:00+08:00</updated>
-    <id>http://hrchen.com/2013/06/nsurlconnection-with-nsrunloopcommonmodes</id>
-    <content type="html"><![CDATA[<p>我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有<a href="https://github.com/pokeb/asi-http-request/">ASIHTTPRequest</a>（已经停止开发维护）和<a href="https://github.com/AFNetworking/AFNetworking">AFNetWorking</a>。两者实现异步网络请求的方式不太相同，ASIHTTPRequest使用的是一个公共独立子线程和CFNetWork API的技术：</p>
-
-<p>```
-+ (NSThread <em>)threadForRequest:(ASIHTTPRequest </em>)request
-{</p>
-
-<pre><code>if (networkThread == nil) {
-    @synchronized(self) {
-        if (networkThread == nil) {
-            networkThread = [[NSThread alloc] initWithTarget:self selector:@selector(runRequests) object:nil];
-            [networkThread start];
-        }
-    }
-}
-return networkThread;
-</code></pre>
-
-<p>}
-```
-AFNetWorking则是包装了NSOperation和NSURLConnection技术实现异步网络请求，然而它在NSOperation中真正启动NSURLConnection网络请求时，同样生成了一个公共独立子线程来Kick off网络请求：</p>
-
-<p>```
-+ (NSThread *)networkRequestThread {</p>
-
-<pre><code>static NSThread *_networkRequestThread = nil;
-static dispatch_once_t oncePredicate;
-dispatch_once(&amp;oncePredicate, ^{
-    _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];
-    [_networkRequestThread start];
-});
-
-return _networkRequestThread;
-</code></pre>
-
-<p>}
-```</p>
-
-<!-- more -->
-
-
-<p>ASIHTTPRequest和AFNetWorking实际上都是使用一个公共独立子线程配合Run Loop来实现管理网络请求
-。由于我在开发中需要一个简单的网络图片下载功能，直接使用第三方库需要添加太多文件，就写了一个类似Sample Code中PTNormalDownloaler下载类，当时遇到个tricky的问题。</p>
-
-<p>首先，如果是直接调用NSURLConnection的initWithRequest:delegate:startImmediately:（第三个参数用YES，这个是designated initializer）或者方法initWithRequest:delegate:时，NSURLConnection会默认运行在NSDefaultRunLoopMode模式下，即使再使用scheduleInRunLoop:forMode:设置运行模式也没有用。如果NSURLConnection运行在NSDefaultRunLoopMode下，何为Run Loop的模式Mode，请参考这篇<a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">Blog</a>），
-这篇Blog提到NSDefaultRunLoopMode是Run Loop默认的运行模式，用于处理除了NSConnection对象的事件。
-然而如果NSURLConnection是运行在NSDefaultRunLoopMode，而当前线程是主线程，并且UI上有类似滚动这样的操作，那么主线程的Run Loop会运行在UITrackingRunLoopMode下，就无法响应NSURLConnnection的回调。此时需要首先使用initWithRequest:delegate:startImmediately:（第三个参数为NO）生成NSURLConnection，再重新设置NSURLConnection的运行模式为NSRunLoopCommonModes，那么UI操作和回调的执行都将是非阻塞的，因为NSRunLoopCommonModes是一组run loop mode的集合，默认情况下包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。</p>
-
-<p>```
-- (void)start
-{</p>
-
-<pre><code>NSMutableURLRequest* request = [[NSMutableURLRequest alloc]   
-            initWithURL:self.URL
-            cachePolicy:NSURLCacheStorageNotAllowed
-            timeoutInterval:self.timeoutInterval];
-[request setHTTPMethod: @"GET"];
-self.connection =[[NSURLConnection alloc] initWithRequest:request
-                                                 delegate:self
-                                         startImmediately:NO];
-[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
-[self.connection start];
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>其次在调用PTNormalDownloaler的start方法时，如果是用GCD在其他线程中开始运行：</p>
-
-<p>```
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){</p>
-
-<pre><code>    [downloader start];
-});
-</code></pre>
-
-<p>```
-而非在主线程中运行：</p>
-
-<p>```
-[downloader performSelectorOnMainThread:@selector(start)</p>
-
-<pre><code>                         withObject:nil 
-                      waitUntilDone:YES];
-</code></pre>
-
-<p>```</p>
-
-<p>你在GCD的全局队列里运行的PTNormalDownloaler中的不会得到NSURLConnection回调，而从主线程中启动NSURLConnection可以得到回调，这是由于在GCD全局队列中执行时没有运行Run Loop，那么NSURLConnection也就无法触发回调了。</p>
-
-<p>当然在GCD的全局队列里启动NSURLConnection需要这样这样：</p>
-
-<p>```
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(){</p>
-
-<pre><code>    [downloader start];
-    NSLog(@"current worker thread: %@", [NSThread currentThread]);
-    [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
-    NSLog(@"exit worker thread");
-});
-</code></pre>
-
-<p>```</p>
-
-<p>如果从主线程启动NSURLConntection，其回调会在主线程中被调用：</p>
-
-<p><code>
-2013-06-26 19:35:13.309 NSURLConnectionExample[22646:50b] connectionDidFinishLoading in main thread?: 1
-</code></p>
-
-<p>如果是在子线程启动NSURLConntection，其回调则会在子线程中被调用：</p>
-
-<p><code>
-2013-06-26 19:38:18.937 NSURLConnectionExample[22670:3903] connectionDidFinishLoading in main thread?: 0
-</code></p>
-
-<p>在主线程启动NSURLConnection会不会影响主线程的UI？影响肯定会有，但是网络IO本身不会影响，那是底层操作系统的事情，仅仅是网络IO结束后由主线程来处理回调而已。</p>
-
-<p>样例程序里也实现了一个基于子线程的下载器PTThreadDownloader，与ASIHTTPRequest和AFNetWorking中的方法类似，生成一个公共子线程来启动NSURLConnection。这里没有必要对每个网络请求都生成一个后台子线程去启动NSURLConnection（例如上面那种用GCD扔到global queue的方式最终也是每次从线程池找到一个线程来启动NSURLConnection），因为底层网络IO并不是在这个子线程里去执行的，子线程仅仅用于响应NSURLConnection回调。不过公共子线程的方法会导致有一个子线程一直运行在后台，等待用户用它来启动NSURLConnection。</p>
-
-<h3>Sample Code</h3>
-
-<p>本文例子放在<a href="https://github.com/hrchen/ExamplesForBlog">Github</a>上（工程NSURLConnectionExample），可以根据文中的几种情况测试initWithRequest:delegate:startImmediately:第三个参数的影响以及回调问题，例子UI中的按钮每点击一次会产生一个下载PTNormalDownloaler对象并开始执行，如果这个NSURLConnection是运行在NSDefaultRunLoopMode模式下，那么上下滚动UI中的Table View，是不会触发NSURLConnection回调的，只有UI操作结束后才会触发。</p>
 ]]></content>
   </entry>
   

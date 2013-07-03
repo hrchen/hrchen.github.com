@@ -7,7 +7,15 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="Jul 2nd, 2013 iOS iOS多线程编程Part 3/3 - GCD 前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。 前言 GCD: Grand Central Dispatch， &hellip;">
+	<meta name="description" content="Jul 3rd, 2013 iOS 关于+initialize和+load的坑 NSObject有两个特殊的类方法+initialize和+load。+initialize会在类的任何其他函数调用前被调用，因此也可以利用这个特性实现Singleton单例： 1
+2
+3
+4
+5
+6
+7
+8
+9 &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -99,6 +107,79 @@
   
 
 
+<time datetime="2013-07-03T22:29:00+08:00" data-updated="true" itemprop="datePublished">Jul 3<span>rd</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/tricky-initialize-and-load/" itemprop="url">关于+initialize和+load的坑</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>NSObject有两个特殊的类方法+initialize和+load。+initialize会在类的任何其他函数调用前被调用，因此也可以利用这个特性实现Singleton单例：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>static Manager +theManager = nil;
+</span><span class='line'>
+</span><span class='line'>+ (void) initialize 
+</span><span class='line'>{
+</span><span class='line'>  if (self == [Manager class]) 
+</span><span class='line'>  {
+</span><span class='line'>      theManager = [[Manager alloc] init];
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>+ (Manager *)sharedObj 
+</span><span class='line'>{
+</span><span class='line'>  return theManager;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>+load方法是在所在类加载到系统的时候被调用，这通常会比+initialized调用的时机要早，不过通常由于运行环境还有太多不确定性，不建议在+load中调用实际的方法。虽然Apple文档里说+initialized和+load都只会被执行一次，但是这里有坑。</p>
+
+<p>如果子类里没有实现+initialized而父类里面实现了+initialized，那么用到子类时，不是说一定要生成对象，+initialize是调用任何方法，包括类方法，例如[SubClass class]，那么父类的+initialized就会被执行两次！解决办法也很简单，就像开头的写法<code>if (self == [Manager class])</code>，先判断下是不是当前类的类型。</p>
+
+<p>那么对于+load呢？如果你在类的实现中实现了+load，但是在这个类的Category中又实现了一个+load，那么这两个+load都会被调用。</p>
+
+<p>既然这两个方法都是如此的诡异，所以除非必要，最好都不要在这两个方法中执行太多的操作，尤其是+load。绕过坑，远离危险。</p>
+
+		
+		
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
 <time datetime="2013-07-02T21:20:00+08:00" data-updated="true" itemprop="datePublished">Jul 2<span>nd</span>, 2013</time></div>
 		<div class="tags">
 
@@ -115,7 +196,7 @@
 
 <h3>前言</h3>
 
-<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的low level的C接口，基本功能非常类似NSOperation，允许将工作分解成互不相关的子任务串行或者并行的添加到工作队列中，由于接近系统底层，因此性能比NSOperation要好，但是并不属于Cocoa框架。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
+<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
