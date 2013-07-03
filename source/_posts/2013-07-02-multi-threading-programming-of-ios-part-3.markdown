@@ -10,7 +10,7 @@ categories: iOS
 
 
 ###前言
-GCD: Grand Central Dispatch，是一组用于实现并发编程的low level的C接口，基本功能非常类似NSOperation，允许将工作分解成互不相关的子任务串行或者并行的添加到工作队列中，由于接近系统底层，因此性能比NSOperation要好，但是并不属于Cocoa框架。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：
+GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：
 
 ```
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{

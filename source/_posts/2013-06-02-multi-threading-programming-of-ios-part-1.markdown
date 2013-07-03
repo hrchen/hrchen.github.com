@@ -336,7 +336,7 @@ Run Loop就是一个处理事件源的循环，你可以控制这个Run Loop运�
 * NSURLConnection在子线程中发起异步请求
  
 ###Sample Code
-RunLoop刚开始确实坑很多。理解概念最好的方式还是动手写代码，写了个例子放在[GitHub](https://github.com/hrchen/ExamplesForBlog)上（工程NSThreadExample），欢迎大家讨论。
+RunLoop刚开始用确实坑很多，理解概念最好的方式还是动手写代码，写了个例子放在[GitHub](https://github.com/hrchen/ExamplesForBlog)上（工程NSThreadExample），欢迎大家讨论。
 
 Apple官方也有一个基于Run Loop的异步网络请求示例程序[SimpleURLConnections](http://developer.apple.com/library/ios/#samplecode/SimpleURLConnections/Listings/Read_Me_About_SimpleURLConnections_txt.html)。
 
@@ -348,4 +348,4 @@ Apple官方也有一个基于Run Loop的异步网络请求示例程序[SimpleURL
 
 [CFRunLoop Reference](https://developer.apple.com/library/mac/#documentation/CoreFoundation/Reference/CFRunLoopRef/Reference/reference.html)
 
-
+[CFRunLoopObserver Reference](http://developer.apple.com/library/mac/#documentation/CoreFoundation/Reference/CFRunLoopObserverRef/Reference/reference.html)
