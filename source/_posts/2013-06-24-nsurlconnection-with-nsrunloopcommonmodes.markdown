@@ -6,7 +6,7 @@ comments: true
 categories: iOS
 ---
 
-我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有[ASIHTTPRequest](https://github.com/pokeb/asi-http-request/)（已经停止开发维护）和[AFNetWorking](https://github.com/AFNetworking/AFNetworking)。两者实现异步网络请求的方式不太相同，ASIHTTPRequest使用的是一个公共独立子线程和CFNetWork API的技术：
+我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有[ASIHTTPRequest](https://github.com/pokeb/asi-http-request/)（已经停止开发维护）和[AFNetWorking](https://github.com/AFNetworking/AFNetworking)。两者实现异步网络请求的方式不太相同，ASIHTTPRequest使用的是NSOperation+CFNetWork API实现异步网络请求，但是在一个公共独立子线程上去执行网络请求：
 
 ```
 + (NSThread *)threadForRequest:(ASIHTTPRequest *)request
@@ -22,7 +22,7 @@ categories: iOS
 	return networkThread;
 }
 ```
-AFNetWorking则是包装了NSOperation和NSURLConnection技术实现异步网络请求，然而它在NSOperation中真正启动NSURLConnection网络请求时，同样生成了一个公共独立子线程来Kick off网络请求：
+AFNetWorking则是包装了NSOperation和NSURLConnection技术实现异步网络请求，它在NSOperation中真正启动NSURLConnection网络请求时，同样生成了一个公共独立子线程来Kick off网络请求：
 
 ```
 + (NSThread *)networkRequestThread {
