@@ -35,16 +35,22 @@ categories: iOS
 {% img /images/post/xcode-arc-check.jpg %} 
 
 正常情况下不会顺利完成Check，会有大量需要手动修改的Error，常见的问题有以下这些：
+
 1)  调用 [cell autorelease]、[object release]、[object retain]，直接删除即可，这种应该属于Checker的误报，正常是可以直接Refactor的。
+
 2)  CoreFoundation对象与NSObject对象的转换，需要添加__bridge, __bridge_retained或者__bridge_trasfer。
+
 CoreFoundation的对象例如CFStringRef有自己的引用计数，和Cocoa框架中的NSObject是不同的方法，ARC只对NSObject对象的引用计数有效。只要是生成CF对象的函数名中有含有Create, Copy, 或者Retain，就表示需要为它的引用计数负责，需要使用结束时CFRelease()将引用计数减一。
-例如：如果使用了一个含有reate, Copy, 或者Retain的方法生成了一个CFStringRef name，那么在转换成NSString时，就需要写成NSString *nameString = (__bridge_transfer NSString *)name; 
+
+例如：如果使用了一个含有reate, Copy, 或者Retain的方法生成了一个CFStringRef name，那么在转换成NSString时，就需要写成`NSString *nameString = (__bridge_transfer NSString *)name;`
+ 
 * __bridge_transfer的含义表示将CF对象的管理权移至NSObject层由ARC负责，无需再用CFRelease()释放name这个CFStringRef。
 * __bridge_retained的含义相反，就是将一个NSObject对象转换成CF对象，并且引用计数加一，那么在CF层用完这个CF对象后，就需要使用CFRelease()释放该对象，因为内存管理权已经由NSobject层转移至CF层。
 *  __bridge的含义表示在NSObject层和CF层引用计数都平衡，无需转移内存管理权。
-例如如果使用不包含reate, Copy, 或者Retain的函数获得的CFStringRef name转换成NSString时，无需处理引用计数问题，因此可以这样转换：NSString *nameString = (__bridge NSString *)name;
+例如如果使用不包含reate, Copy, 或者Retain的函数获得的CFStringRef name转换成NSString时，无需处理引用计数问题，因此可以这样转换：`NSString *nameString = (__bridge NSString *)name;`
 
 除了上面三个关键字，还有两个宏CFBridgingRetain()和CFBridgingRelease()来控制CF层与NSObject层的引用计数平衡，不过实际上他们就是__bridge_retained和__bridge_transfer。
+
 ```
 CFTypeRef CFBridgingRetain(id X) 
 { return (__bridge_retained CFTypeRef)X; } 
@@ -52,6 +58,7 @@ CFTypeRef CFBridgingRetain(id X)
 id CFBridgingRelease(CFTypeRef CF_CONSUMED X) 
 { return (__bridge_transfer id)X; }
 ```
+
 3)  NSInvocation方法
 例如：
 
@@ -80,13 +87,19 @@ NSDictionary *tempDict = nil;
 _array = tempArray;
 _dict = tempDict;
 ```
+
 ###ARC开发注意事项
 
 1)  NSObject的 retain, release和autorelease都无需再调用，ARC会评估NSObject对象的生命周期，在编译器自动添加相应内存相关方法完成内存管理，并且会生成相应的dealloc方法，因此如果自定义的类如果没有需要内存管理外的操作(例如删除NSNotification的Observer以及将指向自己的delegate置为nil)，就无需再实现dealloc。
+
 2)  不能在struct中使用NSObject对象的指针。
+
 3)  使用@autoreleasepool{}取代NSAutoreleasePool。
+
 4)  不再使用NSZone。
+
 5)  新增属性关键字strong、weak、unsafe_unretained
+
 6)  新增变量关键字__strong、__weak、__unsafe_unretained、__autoreleasing：
 __strong表示这个变量指针是强指针，指向的对象只要有强指针指向它就不会被销毁；
 __weak表示变量指针是弱指针，如果没有其他强指针指向这个对象时，这个对象就会被销毁，同时弱指针会置为nil；
@@ -98,6 +111,7 @@ __autoreleasing用于传递给方法的参数是引用传值，并且在返回�
 MyClass * __weak weakReference;
 MyClass * __unsafe_unretained unsafeReference;
 ```
+
 7)  避免循环引用问题
 循环引用问题一般在两个类对象相互引用和使用Block对象时出现，解决两个类对象相互引用问题，可以将其中一个引用声明为弱引用，就可以打破循环引用问题。
 Block对象常见的循环引用问题如下：
@@ -109,7 +123,9 @@ myController.completionBlock= ^() {
     [myController dismissViewControllerAnimated:YES completion:nil]; }; 
 ```
 上面例子中会导致completionBlock和myController循环引用，正确的处理方法有两种：
+
 * 一是使用__block关键字，之后将该__block变量置为nil
+
 ```
 MyViewController * __block myController = [[MyViewController alloc] init…];
 
@@ -120,6 +136,7 @@ myController.completionBlock= ^() {
 ```
 
 * 二是使用__weak关键字
+
 ```
 MyViewController * __block myController = [[MyViewController alloc] init…];
 MyViewController * __weak weakMyViewController = myController;
@@ -137,8 +154,8 @@ myController.completionBlock= ^() {
 
 ```
 - (void)test { 
-NSString *name; 
-NSLog(@"name: %@", name); 
+	NSString *name; 
+	NSLog(@"name: %@", name); 
 }
 ```
 上面代码会打印nil。
@@ -147,5 +164,6 @@ NSLog(@"name: %@", name);
 {% img /images/post/xcode-fno-objc-arc.jpg %}
 
 11) 在MRC情况下NSString * __block myString是不会被retain的，但是ARC情况下NSString * __block myString实际会被retian，如果需要和MRC下同样的语义，请使用：__block NSString * __unsafe_unretained myString 或者__block NSString * __weak myString。
+
 12) iOS 4.*系统不支持weak语义，可以使用unsafe_unretained替代，但是可能导致悬空指针问题，需要小心对待。
 
