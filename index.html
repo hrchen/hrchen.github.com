@@ -7,15 +7,7 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="Jul 3rd, 2013 iOS 关于+initialize和+load的坑 NSObject有两个特殊的类方法+initialize和+load。+initialize会在类的任何其他函数调用前被调用，因此也可以利用这个特性实现Singleton单例： 1
-2
-3
-4
-5
-6
-7
-8
-9 &hellip;">
+	<meta name="description" content="Jul 9th, 2013 iOS ARC工程转换和开发注意事项 本文用于备份ARC工程转换流程和开发注意事项，ARC的意义不仅仅是开发效率的提高，更是一种思维方式的转变，不再考虑什么地方调用retain/release，而是利用对象的强/弱指针来控制对象所有权。 ARC工程转换 &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,7 +56,7 @@
 <nav id="sub-nav">
 	<div class="social">
 		
-		<a class="weibo" href="http://www.weibo.com/dr_hrchen" title="Sina Weibo">Weibo</a>
+		<a class="weibo" href="http://www.weibo.com/hrchen" title="Sina Weibo">Weibo</a>
 		
 		
 		
@@ -94,6 +86,54 @@
 			<div class="mid-col-container">
 				<div id="content" class="inner">
 <div itemscope itemtype="http://schema.org/Blog">
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-09T17:40:00+08:00" data-updated="true" itemprop="datePublished">Jul 9<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/arc-transfer-and-notice/" itemprop="url">ARC工程转换和开发注意事项</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>本文用于备份ARC工程转换流程和开发注意事项，ARC的意义不仅仅是开发效率的提高，更是一种思维方式的转变，不再考虑什么地方调用retain/release，而是利用对象的强/弱指针来控制对象所有权。</p>
+
+<h3>ARC工程转换</h3>
+
+<h4>Xcode工程设置</h4>
+
+<p>1)  查看Xcode工程Build Settings设置中Builing Options中的Compiler选项，确保使用的是Apple LLVM compiler 3.0以上版本的编译器；</p>
+
+<p><img src="/images/post/xcode-compiler.jpg"></p>
+
+<p>2)  在Xcode工程的Build Settings开启ARC：搜索Objective-C Automatic Reference Counting；</p>
+
+<p><img src="/images/post/xcode-arc.jpg"></p>
+
+
+		
+		<a href="/2013/07/arc-transfer-and-notice/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
 
 
     <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">

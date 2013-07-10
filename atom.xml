@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-07T22:51:35+08:00</updated>
+  <updated>2013-07-11T01:11:14+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -12,6 +12,218 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[ARC工程转换和开发注意事项]]></title>
+    <link href="http://hrchen.com/2013/07/arc-transfer-and-notice/"/>
+    <updated>2013-07-09T17:40:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/arc-transfer-and-notice</id>
+    <content type="html"><![CDATA[<p>本文用于备份ARC工程转换流程和开发注意事项，ARC的意义不仅仅是开发效率的提高，更是一种思维方式的转变，不再考虑什么地方调用retain/release，而是利用对象的强/弱指针来控制对象所有权。</p>
+
+<h3>ARC工程转换</h3>
+
+<h4>Xcode工程设置</h4>
+
+<p>1)  查看Xcode工程Build Settings设置中Builing Options中的Compiler选项，确保使用的是Apple LLVM compiler 3.0以上版本的编译器；</p>
+
+<p><img src="http://hrchen.com/images/post/xcode-compiler.jpg"></p>
+
+<p>2)  在Xcode工程的Build Settings开启ARC：搜索Objective-C Automatic Reference Counting；</p>
+
+<p><img src="http://hrchen.com/images/post/xcode-arc.jpg"></p>
+
+<!-- more -->
+
+
+<p>3)  打开Xcode的Prefernece设置中的General，开启Coninue building after errors。</p>
+
+<p><img src="http://hrchen.com/images/post/xcode-settings.jpg"></p>
+
+<h4>开启ARC转换工具</h4>
+
+<p>1) 打开Xcode->Edit->Refactor->Convert to Objective-C ARC…</p>
+
+<p><img src="http://hrchen.com/images/post/xcode-refactor-arc.jpg"></p>
+
+<p>2) 注意只选择本工程相关文件，第三方库如果一般不要进行ARC转换，如果有对应ARC版本库可以直接替换。</p>
+
+<p><img src="http://hrchen.com/images/post/xcode-arc-check.jpg"></p>
+
+<p>正常情况下不会顺利完成Check，会有大量需要手动修改的Error，常见的问题有以下这些：</p>
+
+<p>1)  调用 [cell autorelease]、[object release]、[object retain]，直接删除即可，这种应该属于Checker的误报，正常是可以直接Refactor的。</p>
+
+<p>2)  CoreFoundation对象与NSObject对象的转换，需要添加<strong>bridge, </strong>bridge_retained或者__bridge_trasfer。</p>
+
+<p>CoreFoundation的对象例如CFStringRef有自己的引用计数，和Cocoa框架中的NSObject是不同的方法，ARC只对NSObject对象的引用计数有效。只要是生成CF对象的函数名中有含有Create, Copy, 或者Retain，就表示需要为它的引用计数负责，需要使用结束时CFRelease()将引用计数减一。</p>
+
+<p>例如：如果使用了一个含有reate, Copy, 或者Retain的方法生成了一个CFStringRef name，那么在转换成NSString时，就需要写成<code>NSString *nameString = (__bridge_transfer NSString *)name;</code></p>
+
+<ul>
+<li>__bridge_transfer的含义表示将CF对象的管理权移至NSObject层由ARC负责，无需再用CFRelease()释放name这个CFStringRef。</li>
+<li>__bridge_retained的含义相反，就是将一个NSObject对象转换成CF对象，并且引用计数加一，那么在CF层用完这个CF对象后，就需要使用CFRelease()释放该对象，因为内存管理权已经由NSobject层转移至CF层。</li>
+<li>__bridge的含义表示在NSObject层和CF层引用计数都平衡，无需转移内存管理权。
+例如如果使用不包含reate, Copy, 或者Retain的函数获得的CFStringRef name转换成NSString时，无需处理引用计数问题，因此可以这样转换：<code>NSString *nameString = (__bridge NSString *)name;</code></li>
+</ul>
+
+
+<p>除了上面三个关键字，还有两个宏CFBridgingRetain()和CFBridgingRelease()来控制CF层与NSObject层的引用计数平衡，不过实际上他们就是<strong>bridge_retained和</strong>bridge_transfer。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>CFTypeRef CFBridgingRetain(id X) 
+</span><span class='line'>{ return (__bridge_retained CFTypeRef)X; } 
+</span><span class='line'>
+</span><span class='line'>id CFBridgingRelease(CFTypeRef CF_CONSUMED X) 
+</span><span class='line'>{ return (__bridge_transfer id)X; }</span></code></pre></td></tr></table></div></figure>
+
+
+<p>3)  NSInvocation方法
+例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>NSString *date = @”test”;
+</span><span class='line'>[writeInvocation setArgument:&data atIndex:2];</span></code></pre></td></tr></table></div></figure>
+
+
+<p>NSInvocation在设置调用参数时会提示：<code>NSInvocation's setArgument is not safe to be used with an object with ownership other than __unsafe_unretained</code>
+修改方法需要将传入的参数添加__unsafe_unretained关键字，即<code>NSString * __unsafe_unretained date = @”test”;</code></p>
+
+<p>4)  NSAutoreleasePool
+ARC下不再支持NSAutoreleasePool，需要使用@autoreleasepool{}替换。</p>
+
+<p>5)  错误<code>Passing address of non-local object to __autoreleasing parameter for write-back</code>。
+此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//_array 和_dict是成员变量而非局部变量
+</span><span class='line'>[CTViewController trainInfoList:&_array forSeats:&_dict];</span></code></pre></td></tr></table></div></figure>
+
+
+<p>处理方法也比较简单，生成一个临时局部变量即可：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>NSArray *tempArray = nil;
+</span><span class='line'>NSDictionary *tempDict = nil;
+</span><span class='line'>[CTViewController trainInfoList:&tempArray forSeats:&tempDict];
+</span><span class='line'>_array = tempArray;
+</span><span class='line'>_dict = tempDict;</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>ARC开发注意事项</h3>
+
+<p>1)  NSObject的 retain, release和autorelease都无需再调用，ARC会评估NSObject对象的生命周期，在编译器自动添加相应内存相关方法完成内存管理，并且会生成相应的dealloc方法，因此如果自定义的类如果没有需要内存管理外的操作(例如删除NSNotification的Observer以及将指向自己的delegate置为nil)，就无需再实现dealloc。</p>
+
+<p>2)  不能在struct中使用NSObject对象的指针。</p>
+
+<p>3)  使用@autoreleasepool{}取代NSAutoreleasePool。</p>
+
+<p>4)  不再使用NSZone。</p>
+
+<p>5)  新增属性关键字strong、weak、unsafe_unretained</p>
+
+<p>6)  新增变量关键字<strong>strong、</strong>weak、<strong>unsafe_unretained、</strong>autoreleasing：
+<strong>strong表示这个变量指针是强指针，指向的对象只要有强指针指向它就不会被销毁；
+</strong>weak表示变量指针是弱指针，如果没有其他强指针指向这个对象时，这个对象就会被销毁，同时弱指针会置为nil；
+<strong>unsafe_unretained和</strong>weak类似，除了在对象销毁后不会使这个<strong>unsafe_unretained指针置为nil，因此这个指针就变成悬空指针！
+</strong>autoreleasing用于传递给方法的参数是引用传值，并且在返回时会autorelease。
+正确的关键字写法：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>MyClass * __weak weakReference;
+</span><span class='line'>MyClass * __unsafe_unretained unsafeReference;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>7)  避免循环引用问题
+循环引用问题一般在两个类对象相互引用和使用Block对象时出现，解决两个类对象相互引用问题，可以将其中一个引用声明为弱引用，就可以打破循环引用问题。
+Block对象常见的循环引用问题如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>MyViewController *myController = [[MyViewController alloc] init…];
+</span><span class='line'>
+</span><span class='line'>myController.completionBlock= ^() { 
+</span><span class='line'>    [myController dismissViewControllerAnimated:YES completion:nil]; }; </span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面例子中会导致completionBlock和myController循环引用，正确的处理方法有两种：</p>
+
+<ul>
+<li>一是使用<strong>block关键字，之后将该</strong>block变量置为nil</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>MyViewController * __block myController = [[MyViewController alloc] init…];
+</span><span class='line'>
+</span><span class='line'>myController.completionBlock= ^() {
+</span><span class='line'>    [myController dismissViewControllerAnimated:YES completion:nil]; 
+</span><span class='line'>    myController = nil;
+</span><span class='line'>}; </span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>二是使用__weak关键字</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>MyViewController * __block myController = [[MyViewController alloc] init…];
+</span><span class='line'>MyViewController * __weak weakMyViewController = myController;
+</span><span class='line'>
+</span><span class='line'>myController.completionBlock= ^() {
+</span><span class='line'>    [weakMyViewController dismissViewControllerAnimated:YES completion:nil]; 
+</span><span class='line'>}; </span></code></pre></td></tr></table></div></figure>
+
+
+<p>8)  toll-free bridge问题</p>
+
+<p>对于要使用Core Foundation的对象时，要注意对象生命周期的所有权问题，重点是三个关键字<strong>bridge, </strong>bridge_retained和__bridge_trasfer对CF对象和NS对象的转换，使用方法参见上节工程转换时候的说明。</p>
+
+<p>9)  ARC时所有临时变量指针(栈内生成)都会初始化为nil。例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)test { 
+</span><span class='line'>  NSString *name; 
+</span><span class='line'>  NSLog(@"name: %@", name); 
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面代码会打印nil。</p>
+
+<p>10) 如果有需要ARC管理的文件，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
+<img src="http://hrchen.com/images/post/xcode-fno-objc-arc.jpg"></p>
+
+<p>11) 在MRC情况下NSString * <strong>block myString是不会被retain的，但是ARC情况下NSString * </strong>block myString实际会被retian，如果需要和MRC下同样的语义，请使用：<strong>block NSString * </strong>unsafe_unretained myString 或者<strong>block NSString * </strong>weak myString。</p>
+
+<p>12) iOS 4.*系统不支持weak语义，可以使用unsafe_unretained替代，但是可能导致悬空指针问题，需要小心对待。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[关于+initialize和+load的坑]]></title>

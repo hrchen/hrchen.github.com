@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-07T22:51:35+08:00</updated>
+  <updated>2013-07-11T01:11:14+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -12,6 +12,198 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[ARC工程转换和开发注意事项]]></title>
+    <link href="http://hrchen.com/2013/07/arc-transfer-and-notice/"/>
+    <updated>2013-07-09T17:40:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/arc-transfer-and-notice</id>
+    <content type="html"><![CDATA[<p>本文用于备份ARC工程转换流程和开发注意事项，ARC的意义不仅仅是开发效率的提高，更是一种思维方式的转变，不再考虑什么地方调用retain/release，而是利用对象的强/弱指针来控制对象所有权。</p>
+
+<h3>ARC工程转换</h3>
+
+<h4>Xcode工程设置</h4>
+
+<p>1)  查看Xcode工程Build Settings设置中Builing Options中的Compiler选项，确保使用的是Apple LLVM compiler 3.0以上版本的编译器；</p>
+
+<p><img src="/images/post/xcode-compiler.jpg"></p>
+
+<p>2)  在Xcode工程的Build Settings开启ARC：搜索Objective-C Automatic Reference Counting；</p>
+
+<p><img src="/images/post/xcode-arc.jpg"></p>
+
+<!-- more -->
+
+
+<p>3)  打开Xcode的Prefernece设置中的General，开启Coninue building after errors。</p>
+
+<p><img src="/images/post/xcode-settings.jpg"></p>
+
+<h4>开启ARC转换工具</h4>
+
+<p>1) 打开Xcode->Edit->Refactor->Convert to Objective-C ARC…</p>
+
+<p><img src="/images/post/xcode-refactor-arc.jpg"></p>
+
+<p>2) 注意只选择本工程相关文件，第三方库如果一般不要进行ARC转换，如果有对应ARC版本库可以直接替换。</p>
+
+<p><img src="/images/post/xcode-arc-check.jpg"></p>
+
+<p>正常情况下不会顺利完成Check，会有大量需要手动修改的Error，常见的问题有以下这些：</p>
+
+<p>1)  调用 [cell autorelease]、[object release]、[object retain]，直接删除即可，这种应该属于Checker的误报，正常是可以直接Refactor的。</p>
+
+<p>2)  CoreFoundation对象与NSObject对象的转换，需要添加<strong>bridge, </strong>bridge_retained或者__bridge_trasfer。</p>
+
+<p>CoreFoundation的对象例如CFStringRef有自己的引用计数，和Cocoa框架中的NSObject是不同的方法，ARC只对NSObject对象的引用计数有效。只要是生成CF对象的函数名中有含有Create, Copy, 或者Retain，就表示需要为它的引用计数负责，需要使用结束时CFRelease()将引用计数减一。</p>
+
+<p>例如：如果使用了一个含有reate, Copy, 或者Retain的方法生成了一个CFStringRef name，那么在转换成NSString时，就需要写成<code>NSString *nameString = (__bridge_transfer NSString *)name;</code></p>
+
+<ul>
+<li>__bridge_transfer的含义表示将CF对象的管理权移至NSObject层由ARC负责，无需再用CFRelease()释放name这个CFStringRef。</li>
+<li>__bridge_retained的含义相反，就是将一个NSObject对象转换成CF对象，并且引用计数加一，那么在CF层用完这个CF对象后，就需要使用CFRelease()释放该对象，因为内存管理权已经由NSobject层转移至CF层。</li>
+<li>__bridge的含义表示在NSObject层和CF层引用计数都平衡，无需转移内存管理权。
+例如如果使用不包含reate, Copy, 或者Retain的函数获得的CFStringRef name转换成NSString时，无需处理引用计数问题，因此可以这样转换：<code>NSString *nameString = (__bridge NSString *)name;</code></li>
+</ul>
+
+
+<p>除了上面三个关键字，还有两个宏CFBridgingRetain()和CFBridgingRelease()来控制CF层与NSObject层的引用计数平衡，不过实际上他们就是<strong>bridge_retained和</strong>bridge_transfer。</p>
+
+<p>```
+CFTypeRef CFBridgingRetain(id X)
+{ return (__bridge_retained CFTypeRef)X; }</p>
+
+<p>id CFBridgingRelease(CFTypeRef CF_CONSUMED X)
+{ return (__bridge_transfer id)X; }
+```</p>
+
+<p>3)  NSInvocation方法
+例如：</p>
+
+<p><code>
+NSString *date = @”test”;
+[writeInvocation setArgument:&amp;data atIndex:2];
+</code></p>
+
+<p>NSInvocation在设置调用参数时会提示：<code>NSInvocation's setArgument is not safe to be used with an object with ownership other than __unsafe_unretained</code>
+修改方法需要将传入的参数添加__unsafe_unretained关键字，即<code>NSString * __unsafe_unretained date = @”test”;</code></p>
+
+<p>4)  NSAutoreleasePool
+ARC下不再支持NSAutoreleasePool，需要使用@autoreleasepool{}替换。</p>
+
+<p>5)  错误<code>Passing address of non-local object to __autoreleasing parameter for write-back</code>。
+此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：
+<code>
+//_array 和_dict是成员变量而非局部变量
+[CTViewController trainInfoList:&amp;_array forSeats:&amp;_dict];
+</code>
+处理方法也比较简单，生成一个临时局部变量即可：
+<code>
+NSArray *tempArray = nil;
+NSDictionary *tempDict = nil;
+[CTViewController trainInfoList:&amp;tempArray forSeats:&amp;tempDict];
+_array = tempArray;
+_dict = tempDict;
+</code></p>
+
+<h3>ARC开发注意事项</h3>
+
+<p>1)  NSObject的 retain, release和autorelease都无需再调用，ARC会评估NSObject对象的生命周期，在编译器自动添加相应内存相关方法完成内存管理，并且会生成相应的dealloc方法，因此如果自定义的类如果没有需要内存管理外的操作(例如删除NSNotification的Observer以及将指向自己的delegate置为nil)，就无需再实现dealloc。</p>
+
+<p>2)  不能在struct中使用NSObject对象的指针。</p>
+
+<p>3)  使用@autoreleasepool{}取代NSAutoreleasePool。</p>
+
+<p>4)  不再使用NSZone。</p>
+
+<p>5)  新增属性关键字strong、weak、unsafe_unretained</p>
+
+<p>6)  新增变量关键字<strong>strong、</strong>weak、<strong>unsafe_unretained、</strong>autoreleasing：
+<strong>strong表示这个变量指针是强指针，指向的对象只要有强指针指向它就不会被销毁；
+</strong>weak表示变量指针是弱指针，如果没有其他强指针指向这个对象时，这个对象就会被销毁，同时弱指针会置为nil；
+<strong>unsafe_unretained和</strong>weak类似，除了在对象销毁后不会使这个<strong>unsafe_unretained指针置为nil，因此这个指针就变成悬空指针！
+</strong>autoreleasing用于传递给方法的参数是引用传值，并且在返回时会autorelease。
+正确的关键字写法：</p>
+
+<p><code>
+MyClass * __weak weakReference;
+MyClass * __unsafe_unretained unsafeReference;
+</code></p>
+
+<p>7)  避免循环引用问题
+循环引用问题一般在两个类对象相互引用和使用Block对象时出现，解决两个类对象相互引用问题，可以将其中一个引用声明为弱引用，就可以打破循环引用问题。
+Block对象常见的循环引用问题如下：</p>
+
+<p>```
+MyViewController *myController = [[MyViewController alloc] init…];</p>
+
+<p>myController.completionBlock= ^() {</p>
+
+<pre><code>[myController dismissViewControllerAnimated:YES completion:nil]; }; 
+</code></pre>
+
+<p>```
+上面例子中会导致completionBlock和myController循环引用，正确的处理方法有两种：</p>
+
+<ul>
+<li>一是使用<strong>block关键字，之后将该</strong>block变量置为nil</li>
+</ul>
+
+
+<p>```
+MyViewController * __block myController = [[MyViewController alloc] init…];</p>
+
+<p>myController.completionBlock= ^() {</p>
+
+<pre><code>[myController dismissViewControllerAnimated:YES completion:nil]; 
+myController = nil;
+</code></pre>
+
+<p>};
+```</p>
+
+<ul>
+<li>二是使用__weak关键字</li>
+</ul>
+
+
+<p>```
+MyViewController * <strong>block myController = [[MyViewController alloc] init…];
+MyViewController * </strong>weak weakMyViewController = myController;</p>
+
+<p>myController.completionBlock= ^() {</p>
+
+<pre><code>[weakMyViewController dismissViewControllerAnimated:YES completion:nil]; 
+</code></pre>
+
+<p>};
+```</p>
+
+<p>8)  toll-free bridge问题</p>
+
+<p>对于要使用Core Foundation的对象时，要注意对象生命周期的所有权问题，重点是三个关键字<strong>bridge, </strong>bridge_retained和__bridge_trasfer对CF对象和NS对象的转换，使用方法参见上节工程转换时候的说明。</p>
+
+<p>9)  ARC时所有临时变量指针(栈内生成)都会初始化为nil。例如：</p>
+
+<p>```
+- (void)test {</p>
+
+<pre><code>NSString *name; 
+NSLog(@"name: %@", name); 
+</code></pre>
+
+<p>}
+```
+上面代码会打印nil。</p>
+
+<p>10) 如果有需要ARC管理的文件，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
+<img src="/images/post/xcode-fno-objc-arc.jpg"></p>
+
+<p>11) 在MRC情况下NSString * <strong>block myString是不会被retain的，但是ARC情况下NSString * </strong>block myString实际会被retian，如果需要和MRC下同样的语义，请使用：<strong>block NSString * </strong>unsafe_unretained myString 或者<strong>block NSString * </strong>weak myString。</p>
+
+<p>12) iOS 4.*系统不支持weak语义，可以使用unsafe_unretained替代，但是可能导致悬空指针问题，需要小心对待。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[关于+initialize和+load的坑]]></title>
@@ -601,195 +793,6 @@ NSBlockOperation* theOp = [NSBlockOperation blockOperationWithBlock: ^{</p>
 <p><a href="http://developer.apple.com/library/mac/#documentation/General/Conceptual/ConcurrencyProgrammingGuide/OperationObjects/OperationObjects.html">Concurrency Programming Guide</a></p>
 
 <p><a href="http://developer.apple.com/library/mac/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html">NSOperation Class Reference</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Block的引用循环问题 (ARC & non-ARC)]]></title>
-    <link href="http://hrchen.com/2013/06/retain-cycle-in-block/"/>
-    <updated>2013-06-27T00:32:00+08:00</updated>
-    <id>http://hrchen.com/2013/06/retain-cycle-in-block</id>
-    <content type="html"><![CDATA[<p>2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持，第一次使用Block感觉满简单好用的，但是慢慢也遇到很多坑。本文聊聊ARC和non-ARC下Block使用中的引用循环问题，最近遇到了好几次这种问题，还是深入记录下。先来套<a href="http://blog.parse.com/2013/02/05/objective-c-blocks-quiz/">题目</a>热热身，貌似能够全部答对的人蛮少的</p>
-
-<h3>Block实现原理</h3>
-
-<p>首先探究下Block的实现原理，由于Objective-C是C语言的超集，既然OC中的NSObject对象其实是由C语言的struct+isa指针实现的，那么Block的内部实现估计也一样，以下三篇Blog对Block的实现机制做了详细研究：</p>
-
-<ul>
-<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-1/">A look inside blocks: Episode 1</a></li>
-<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-2/">A look inside blocks: Episode 2</a></li>
-<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-3/">A look inside blocks: Episode 3</a></li>
-</ul>
-
-
-<p>虽然实现细节看着头痛，不过发现Block果然是和OC中的NSObject类似，也是用struct实现出来的东西。这个是LLVM项目compiler-rt分析的block头文<a href="https://llvm.org/svn/llvm-project/compiler-rt/trunk/BlocksRuntime/Block_private.h">Block_private.h</a>头文件中关于Block的struct声明：</p>
-
-<!--more-->
-
-
-<p>```
-struct Block_descriptor {</p>
-
-<pre><code>unsigned long int reserved;
-unsigned long int size;
-void (*copy)(void *dst, void *src);
-void (*dispose)(void *);
-</code></pre>
-
-<p>};</p>
-
-<p>struct Block_layout {</p>
-
-<pre><code>void *isa;
-int flags;
-int reserved;
-void (*invoke)(void *, ...);
-struct Block_descriptor *descriptor;
-/* Imported variables. */
-</code></pre>
-
-<p>};</p>
-
-<p>```</p>
-
-<p>我们发现Block_layout中也有一个isa指针，像极了NSobject内部实现struct中的isa指针。这里的isa可能指向三种类型之一的Block：</p>
-
-<ul>
-<li>_NSConcreteGlobalBlock：全局类型Block，在编译器就已经确定，直接放在代码段__TEXT上。直接在NSLog中打印的类型为__NSGlobalBlock__。</li>
-<li>_NSConcreteStackBlock：位于栈上分配的Block，即__NSStaclBlock__。</li>
-<li>_NSConcreteMallocBlock：位于堆上分配的Block，即__NSMallocBlock__。</li>
-</ul>
-
-
-<p>为什么会有这么多种类呢？首先来看全局类型Block，看例子：</p>
-
-<p>```
-void addBlock(NSMutableArray *array) {
-  [array addObject:^{</p>
-
-<pre><code>printf("global block\n");
-</code></pre>
-
-<p>  }];
-}</p>
-
-<p>void example() {
-  NSMutableArray *array = [NSMutableArray array];
-  addBlock(array);
-  void (^block)() = [array objectAtIndex:0];
-  block();
-}</p>
-
-<p>```
-为什么addBlock中添加到array中的Block属于全局Block呢？因为它不需要运行时(Runtime)任何的状态来改变行为，不需要放在堆上或者栈上，直接编译后在代码段中即可，就像个c函数一样。这种类型的Block在ARC和non-ARC情况下没有差别。</p>
-
-<p>这个Block访问了作用域外的变量d，在实现上就是这个block会多一个成员变量对应这个d，在赋值<sup>block</sup>时会将方法exmpale中的d变量值复制到成员变量中，从而实现访问。</p>
-
-<p>```
-void example() {</p>
-
-<pre><code>int d = 5;
-void (^block)() = ^() {
-    printf("%d\n", d);
-};
-block();
-</code></pre>
-
-<p>}
-```</p>
-
-<p>如果要修改d呢？：</p>
-
-<p>```
-void example() {</p>
-
-<pre><code>int d = 5;
-void (^block)() = ^() {
-    d++;
-    printf("%d\n", d);
-};
-block();
-printf("%d\n", d);
-</code></pre>
-
-<p>}
-<code>``
-由于局部变量d和这个block的实现不在同一作用域，仅仅在调用过程中用到了值传递，所以不能直接修改，而需要加一个标识符</code><strong>block int d = 5;`，那么block就可以实现对这个局部变量的修改了。如果是这种</strong>block标识的变量，在Block实现中不再是简单的一个成员变量，而是对应一个新的结构体表示这个<strong>block变量。</strong>block的本质是引入了一个新的<strong>Block_byref<em>{$var_name}</em>{$index}结构体，被</strong>block关键字修饰的变量就被放到这个结构体中。另外，block结构体通过引入<em><em>Block_byref</em>{$var_name}</em>{$index}指针类型的成员，得以间接访问到Block的外部变量。这样对Block外的变量访问从值传递转变为引用，从而有了修改内容的能力。</p>
-
-<p>正常我们使用Block是在栈上生成的，离开了栈作用域便释放了，如果copy一个Block，那么会将这个Block copy到堆上分配，这样就不再受栈的限制，可以随意使用啦。例如：</p>
-
-<p>```
-typedef void (^TestBlock)();</p>
-
-<p>TestBlock getBlock() {
-  char e = 'E';
-  void (^returnedBlock)() = ^{</p>
-
-<pre><code>printf("%c\n", e);
-</code></pre>
-
-<p>  };
-  return returnedBlock;
-}</p>
-
-<p>void example() {
-  TestBlock block = getBlock();
-  block();
-}
-```</p>
-
-<p>函数getBlock中声明并赋值的returnedBlock，一开始是在栈上分配的，属于NSStackBlock，如果是non-ARC情况下return这个NSStackBlock，那么其实已经被销毁了，在函数中example()使用时就会crash。如果是ARC情况下，getBlock返回的block会自动copy到堆上，那么block的类型就是NSMallocBlock，可以在example()中继续使用。要在Non-ARC情况下正常运行，那么就应该修改为：</p>
-
-<p>```
-TestBlock getBlock() {
-  char e = 'E';
-  void (^returnedBlock)() = ^{</p>
-
-<pre><code>printf("%c\n", e);
-</code></pre>
-
-<p>  };
-  return [[returnedBlock copy] autorelease];
-}
-```</p>
-
-<h3>Block中的循环引用问题</h3>
-
-<p>扯了这么多，回到Block的循环引用问题，由于我们很多行为会导致Block的copy，而当Block被copy时，会对block中用到的对象产生强引用(ARC下)或者引用计数加一(non-ARC下)。</p>
-
-<p>如果遇到这种情况：</p>
-
-<p>```
-@property(nonatomic, readwrite, copy) completionBlock completionBlock;</p>
-
-<p>//========================================
-self.completionBlock = ^ {</p>
-
-<pre><code>    if (self.success) {
-        self.success(self.responseData);
-    }
-}
-</code></pre>
-
-<p>};
-```
-对象有一个Block属性，然而这个Block属性中又引用了对象的其他成员变量，那么就会对这个变量本身产生强应用，那么变量本身和他自己的Block属性就形成了循环引用。在ARC下需要修改成这样：</p>
-
-<p>```
-@property(nonatomic, readwrite, copy) completionBlock completionBlock;</p>
-
-<p>//========================================
-__weak typeof(self) weakSelf = self;
-self.completionBlock = ^ {</p>
-
-<pre><code>if (weakSelf.success) {
-    weakSelf.success(weakSelf.responseData);
-}
-</code></pre>
-
-<p>};
-<code>``
-也就是生成一个对自身对象的弱引用，如果是倒霉催的项目还需要支持iOS4.3，就用\_\_unsafe_unretained替代\_\_weak。如果是non-ARC环境下就将\_\_weak替换为\_\_block即可。non-ARC情况下，\_\_block变量的含义是在Block中引入一个新的结构体成员变量指向这个\_\_block变量，那么</code>__block typeof(self) weakSelf = self;`就表示Block别再对self对象retain啦，这就打破了循环引用。</p>
 ]]></content>
   </entry>
   
