@@ -284,7 +284,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
+<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的，这里是个坑，如果你没有实现isConcurrent，默认是返回NO，那么你的NSOperation就不是并发执行而是串行执行的，大多数情况下这可不是你想要的；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
 
 <p>注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation有许多支持KVO的属性：</p>
 
