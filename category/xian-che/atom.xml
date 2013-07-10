@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: 闲扯 | hrchen's blogging]]></title>
+  <link href="http://hrchen.com/category/xian-che/atom.xml" rel="self"/>
+  <link href="http://hrchen.com/"/>
+  <updated>2013-07-07T22:51:35+08:00</updated>
+  <id>http://hrchen.com/</id>
+  <author>
+    <name><![CDATA[hrchen]]></name>
+    <email><![CDATA[dr.hrchen@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[重新开始写Blog]]></title>
+    <link href="http://hrchen.com/2013/05/my-first-blog/"/>
+    <updated>2013-05-26T22:27:00+08:00</updated>
+    <id>http://hrchen.com/2013/05/my-first-blog</id>
+    <content type="html"><![CDATA[<p>最近好几次被问到有没有个人Blog，惭愧=。=~~~~虽然曾经搭过WordPress、注册过Blogger，都没能坚持下来，其实写Blog对技术人员来说是很好的总结方式，值得坚持。</p>
+
+<p>既然要整blog，当然要用正夯的工具，目前最方便的就是github pages啦，搭个<a href="https://github.com/imathis/octopress">octopress</a>，找个漂亮<a href="https://github.com/shashankmehta/greyshade">主题</a>，直接上！发现markdown写起来蛮像读书时写论文用的<a href="http://www.latex-project.org/">LaTex</a>，可以让你专注于码字，而不是格式。</p>
+]]></content>
+  </entry>
+  
+</feed>

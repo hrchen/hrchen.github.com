@@ -1,0 +1,796 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
+  <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
+  <link href="http://hrchen.com/"/>
+  <updated>2013-07-07T22:51:35+08:00</updated>
+  <id>http://hrchen.com/</id>
+  <author>
+    <name><![CDATA[hrchen]]></name>
+    <email><![CDATA[dr.hrchen@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[关于+initialize和+load的坑]]></title>
+    <link href="http://hrchen.com/2013/07/tricky-initialize-and-load/"/>
+    <updated>2013-07-03T22:29:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/tricky-initialize-and-load</id>
+    <content type="html"><![CDATA[<p>NSObject有两个特殊的类方法+initialize和+load。+initialize会在类的任何其他函数调用前被调用，因此也可以利用这个特性实现Singleton单例：</p>
+
+<p>```
+static Manager +theManager = nil;</p>
+
+<ul>
+<li><p>(void) initialize
+{
+  if (self == [Manager class])
+  {
+      theManager = [[Manager alloc] init];
+  }
+}</p></li>
+<li><p>(Manager *)sharedObj
+{
+return theManager;
+}
+```</p></li>
+</ul>
+
+
+<p>+load方法是在所在类加载到系统的时候被调用，这通常会比+initialized调用的时机要早，不过通常由于运行环境还有太多不确定性，不建议在+load中调用实际的方法。虽然Apple文档里说+initialized和+load都只会被执行一次，但是这里有坑。</p>
+
+<p>如果子类里没有实现+initialized而父类里面实现了+initialized，那么用到子类时，不是说一定要生成对象，+initialize是调用任何方法，包括类方法，例如[SubClass class]，那么父类的+initialized就会被执行两次！解决办法也很简单，就像开头的写法<code>if (self == [Manager class])</code>，先判断下是不是当前类的类型。</p>
+
+<p>那么对于+load呢？如果你在类的实现中实现了+load，但是在这个类的Category中又实现了一个+load，那么这两个+load都会被调用。</p>
+
+<p>既然这两个方法都是如此的诡异，所以除非必要，最好都不要在这两个方法中执行太多的操作，尤其是+load。绕过坑，远离危险。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS多线程编程Part 3/3 - GCD]]></title>
+    <link href="http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/"/>
+    <updated>2013-07-02T21:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3</id>
+    <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。</p>
+
+<h3>前言</h3>
+
+<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
+
+<p>```
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{</p>
+
+<pre><code>[self doTask];
+NSLog(@"Fisinished");
+</code></pre>
+
+<p>});
+```</p>
+
+<p>另外，GCD是开源的喔：<a href="http://libdispatch.macosforge.org/">libdispatch</a></p>
+
+<h3>Dispatch Queue</h3>
+
+<p>要添加工作到队列Dispatch Queue中，这个队列可以是串行或者并行的，并行队列会尽可能的并发执行其中的工作任务，而串行队列每次只能运行一个工作任务。</p>
+
+<!--more-->
+
+
+<p>目前GCD中有三种类型的Dispatch Queue：</p>
+
+<ul>
+<li>Main Queue：关联到主线程的队列，可以使用函数dispatch_get_main_queue()获得，加到这个队列中的工作都会分发到主线程运行。主线程只有一个，因此很明显这个是串行队列，每次运行一个工作。</li>
+<li>Global Queue：全局队列是并发队列，又根据优先级细分为高优先级、默认优先级和低优先级三种。通过dispatch_get_global_queue加上优先级参数获得这个全局队列，例如<code>dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)</code></li>
+<li>自定义Queue：自己创建一个队列，只能是串行队列，可以理解为最终有一个独立的子线程帮你运行添加到这个队列中的工作任务。通过函数dispatch_queue_create创建，例如<code>dispatch_queue_create(@"com.kiloapp.test", 0)</code> ,第二个参数仅作保留，目前没有意义，第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名。</li>
+</ul>
+
+
+<h3>添加工作任务</h3>
+
+<p>添加工作任务到队列也非常简单，调用函数dispatch_async()，两个参数，一个就是Dispatch Queue，另一个是一个包含工作的Block，就像本文开头的示例一样。dispatch_async函数是非阻塞的，调用后会立刻返回，工作由系统分配线程去执行工作。因此另一种常见的使用模式是：</p>
+
+<p>```
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{</p>
+
+<pre><code>[self doHardWorkInBackground];
+dispatch_async(dispatch_get_main_queue(), ^{
+    [self updateUI];
+});
+</code></pre>
+
+<p>});
+```
+可以将一些耗时的工作添加到全局队列，让系统分配线程在后台中去做，完成后，再次调用GCD的主队列去完成UI相关的工作，这样做就不会因为大量的非UI相关工作加重主线程负担，加快UI事件响应。</p>
+
+<p>与dispatch_async对应的有一个dispatch_sync方法，它是阻塞式的，会一直等到添加的工作完成后才会返回。</p>
+
+<p>NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起<code>-start</code>也可以直接执行。</p>
+
+<h3>Dispatch Group</h3>
+
+<p>GCD确实非常简单好用，不过有些情况还是有点问题，例如：</p>
+
+<p>```
+for(id obj in array)
+{</p>
+
+<pre><code>[self doWorkOnItem:obj];
+</code></pre>
+
+<p>}
+[self doWorkOnArray:array];
+```</p>
+
+<p>前半部分可以用GCD得到处理性能的提升：</p>
+
+<p>```
+dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+for(id obj in array)</p>
+
+<pre><code>dispatch_async(queue, ^{
+    [self doWorkOnItem:obj];
+});
+</code></pre>
+
+<p>[self doWorkOnArray:array];
+<code>``
+问题是</code>[self doWorkOnArray:array];<code>原先是在全部数组各个成员的工作完成后才会执行的，现在由于dispatch_async是非阻塞的，</code>[self doWorkOnArray:array];`很有可能在各个成员的工作完成前就运行了，这明显不符合我们的目的。如果将dispatch_async改成dispatch_sync可以解决问题，但是和原来的方法一样失去了并行的好处，也没有意义了。</p>
+
+<p>针对这种情况，GCD提供了Dispatch Group可以将一组工作集合在一起，等待这组工作完成后再继续运行。dispatch_group_create函数可以用来创建这个Group：</p>
+
+<p>```
+dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+dispatch_group_t group = dispatch_group_create();
+for(id obj in array)</p>
+
+<pre><code>dispatch_group_async(group, queue, ^{
+    [self doWorkOnItem:obj];
+});
+</code></pre>
+
+<p>dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+dispatch_release(group);
+[self doWorkOnArray:array];
+```</p>
+
+<p>方法是不是很简单，将并发的工作用dispatch_group_async添加到一个Group和全局队列中，dispatch_group_wait会等待这些工作完成后再返回，这样你就可以再运行<code>[self doWorkOnArray:array];</code>。</p>
+
+<p>不过有点不好的是dispatch_group_wait会阻塞当前线程，如果当前是主线程岂不是不好，有更绝的：</p>
+
+<p>```
+dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+dispatch_group_t group = dispatch_group_create();
+for(id obj in array)</p>
+
+<pre><code>dispatch_group_async(group, queue, ^{
+    [self doWorkOnItem:obj];
+});
+</code></pre>
+
+<p>dispatch_group_notify(group, queue, ^{</p>
+
+<pre><code>[self doWorkOnArray:array];
+</code></pre>
+
+<p>});
+dispatch_release(group);
+```
+dispatch_group_notify函数可以将这个Group完成后的工作也同样添加到队列中（如果是需要更新UI，这个队列也可以是主队列），总之这样做就完全不会阻塞当前线程了。</p>
+
+<p>如果就是要同步的执行对数组元素的逐个操作，GCD也提供了一个简便的dispatch_apply函数：</p>
+
+<p>```
+dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+dispatch_apply([array count], queue, ^(size_t index){</p>
+
+<pre><code>[self doWorkOnItem:obj:[array objectAtIndex:index]];
+</code></pre>
+
+<p>});
+[self doWorkOnArray:array];
+```</p>
+
+<p>要了解更全的接口，查看《Grand Central Dispatch (GCD) Reference》。</p>
+
+<h3>其他有趣的特性</h3>
+
+<ul>
+<li>Dispatch Source</li>
+</ul>
+
+
+<p>Run Loop有Input Source，GCD也同样支持一系列事件，就是监听事件发生后会执行一个Block形式的Handler。Dispatch Source支持的事件源类型有：Timer源、signal信号源、描述符(文件或者网络描述符)源、进程源、Port源、自定义源。当然有些源由于iOS系统原因肯定是无法使用的，例如进程源、Port源、、signal信号源。</p>
+
+<p>举个自定义源的例子，假如我们在处理上面那个数组时要在UI中显示一个进度条：</p>
+
+<p>```
+dispatch_source_t source = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_main_queue());</p>
+
+<p>dispatch_source_set_event_handler(source, ^{</p>
+
+<pre><code>[progressIndicator incrementBy:dispatch_source_get_data(source)];
+</code></pre>
+
+<p>});
+dispatch_resume(source);</p>
+
+<p>dispatch_apply([array count], globalQueue, ^(size_t index) {</p>
+
+<pre><code>[self doWorkOnItem:obj:[array objectAtIndex:index]];
+dispatch_source_merge_data(source, 1);
+</code></pre>
+
+<p>});
+```
+dispatch source创建后是出于suspend状态的，必须使用dispatch_resume来恢复，dispatch_apply中每处理一个数组元素会调用dispatch_source_merge_data加1，那么这个source的事件handler就可以通过dispatch_source_get_data拿到source的数据。</p>
+
+<ul>
+<li>单例</li>
+</ul>
+
+
+<p>传统我们实现单例是这样：</p>
+
+<p>```
++ (id)sharedManager
+{</p>
+
+<pre><code>static Manager *theManager = nil;
+@synchronized([Manager class])
+{
+    if(!theManager)
+        theManager = [[Manager alloc] init];
+}
+return theManager;
+</code></pre>
+
+<p>}</p>
+
+<p>```
+这个的成本还是有点高，每次访问都会有同步锁，而GCD有个dispatch_once方法(类似于<a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/pthread_once.html">pthread_once</a>)可以保证只运行一次初始化：</p>
+
+<p>```
++ (id)sharedWhatever
+{</p>
+
+<pre><code>static dispatch_once_t pred;
+static Manager *theManager = nil;
+dispatch_once(&amp;pred, ^{
+    theManager = [[Manager alloc] init];
+});
+return theManager;
+</code></pre>
+
+<p>}
+```</p>
+
+<ul>
+<li>信号量Semaphore</li>
+</ul>
+
+
+<p>和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create用于创建，dispatch_semaphore_signal用于通知，dispatch_semaphore_wait用于等待。</p>
+
+<h3>参考资料</h3>
+
+<p><a href="https://developer.apple.com/library/mac/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html">Grand Central Dispatch (GCD) Reference</a></p>
+
+<p><a href="https://developer.apple.com/library/ios/#documentation/Cocoa/Conceptual/Blocks/Articles/00_Introduction.html">Blocks Programming Topics</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[一个NSURLConnectionDelegate的坑]]></title>
+    <link href="http://hrchen.com/2013/06/tricky-nsurlconnectiondelegate/"/>
+    <updated>2013-06-30T04:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/06/tricky-nsurlconnectiondelegate</id>
+    <content type="html"><![CDATA[<p>NSURLConnection的坑还是蛮多的，上次是<a href="http://www.hrchen.com/2013/06/nsurlconnection-with-nsrunloopcommonmodes/">RunLoopMode的问题</a>，这次是关于NSURLConnectionDelegate。</p>
+
+<p>NSURLConnection的代理Protocol定义有三类：NSURLConnectionDelegate、NSURLConnectionDataDelegate和NSURLConnectionDownloadDelegate。</p>
+
+<ul>
+<li>NSURLConnectionDelegate：所有类型NSURLConnection的基础代理方法，都是Optional的方法，主要是涉及SSL/TSL加密的相关接口。</li>
+</ul>
+
+
+<p>```
+@optional
+- (void)connection:(NSURLConnection <em>)connection didFailWithError:(NSError </em>)error;
+- (BOOL)connectionShouldUseCredentialStorage:(NSURLConnection <em>)connection;
+- (void)connection:(NSURLConnection </em>)connection willSendRequestForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;</p>
+
+<p>```
+* NSURLConnectionDataDelegate：用于将网络请求的数据存放到内存中(以NSData的形式)的代理方法。所有方法都是Optional的。</p>
+
+<!--more-->
+
+
+<p>```
+@optional
+- (NSURLRequest <em>)connection:(NSURLConnection </em>)connection willSendRequest:(NSURLRequest <em>)request redirectResponse:(NSURLResponse </em>)response;
+- (void)connection:(NSURLConnection <em>)connection didReceiveResponse:(NSURLResponse </em>)response;</p>
+
+<ul>
+<li><p>(void)connection:(NSURLConnection <em>)connection didReceiveData:(NSData </em>)data;</p></li>
+<li><p>(NSInputStream <em>)connection:(NSURLConnection </em>)connection needNewBodyStream:(NSURLRequest *)request;</p></li>
+<li><p>(void)connection:(NSURLConnection *)connection   didSendBodyData:(NSInteger)bytesWritten
+                                               totalBytesWritten:(NSInteger)totalBytesWritten
+                                       totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;</p></li>
+<li><p>(NSCachedURLResponse <em>)connection:(NSURLConnection </em>)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse;</p></li>
+<li><p>(void)connectionDidFinishLoading:(NSURLConnection *)connection;</p></li>
+</ul>
+
+
+<p>```
+* NSURLConnectionDownloadDelegate：用于将网络资源直接保存到文件中的代理方法，除了connectionDidFinishDownloading:destinationURL:都是Optional的方法。connectionDidFinishDownloading:destinationURL回调可以告知你下载的网络数据最终存放的文件位置，正常都是在iPhone应用沙盒的/tmp目录下。</p>
+
+<p>```
+@optional
+- (void)connection:(NSURLConnection <em>)connection didWriteData:(long long)bytesWritten totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;
+- (void)connectionDidResumeDownloading:(NSURLConnection </em>)connection totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;</p>
+
+<p>@required
+- (void)connectionDidFinishDownloading:(NSURLConnection <em>)connection destinationURL:(NSURL </em>) destinationURL;</p>
+
+<p>```</p>
+
+<p>由于生成NSURLConnectin对象传入delegate参数时类型就是id，而不是传统id&lt;***Delegate>形式，那么如何确定当前代理实现的是什么类型的NSURLConnectionDelegate代理呢？方法也很诡异，如果你的代理实现了connectionDidFinishDownloading:destinationURL:，那么就表示你要实现的是NSURLConnectionDownloadDelegate，NSURLConnectionDataDelegate中的connection:DidReceiveData就不会得到回调，即使你实现了它。道理很简单，这两类代理一个是用于将下载数据保存到文件上，另一个是保存到内存中，只能两者居其一。</p>
+
+<p>故事还没有结束 ，如果你实现了connectionDidFinishDownloading:destinationURL并且想通过回到得到的destinationURL读取保存数据的文件时，令人惊讶的发现这个文件居然不存在，因为这类NSURLConnectionDataDelegate回调是用于Newsstand类型的App开发的，用于将杂志等信息保存到本地文件。实在想不通为什么只有Newsstand类型App才能用这组接口，很多开发者早已发了bug报告给Apple，Apple也已经确认，但是从iOS5到了iOS7，这个“bug”还是没有被修复。</p>
+
+<p>附带我在Stackoverflow上的<a href="http://stackoverflow.com/questions/11047169/how-may-delegate-method-from-one-protocol-prevent-execution-of-another-one-from/17369617#17369617">回答</a>。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS多线程编程Part 2/3 - NSOperation]]></title>
+    <link href="http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-2/"/>
+    <updated>2013-06-28T23:59:00+08:00</updated>
+    <id>http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-2</id>
+    <content type="html"><![CDATA[<p>多线程编程Part 1介绍了NSThread以及NSRunLoop，这篇Blog介绍另一种并发编程技术：NSOPeration。</p>
+
+<h3>NSOperation &amp; NSOperationQueue</h3>
+
+<p>从头文件NSOperation.h来看接口是非常的简洁，NSOperation本身是一个抽象类，定义了一个要执行的工作，NSOperationQueue是一个工作队列，当工作加入到队列后，NSOperationQueue会自动按照优先顺序及工作的从属依赖关系(如果有的话)组织执行。</p>
+
+<p>NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起<code>-start</code>也可以直接执行。</p>
+
+<!--more-->
+
+
+<p>在继承NSOpertaion后，对于非并发的工作，只需要实现NSOperation子类的main方法：</p>
+
+<p>```
+-(void)main
+{
+   @try
+   {</p>
+
+<pre><code>  // 处理工作任务
+</code></pre>
+
+<p>   }
+   @catch(...)
+   {</p>
+
+<pre><code>  // 处理异常，但是不能再重新抛出异常
+</code></pre>
+
+<p>   }
+}
+<code>``
+由于NSOperation的工作是可以取消Cancel的，那么你在main方法处理工作时就需要不断轮询</code>[self isCancelled]`确认当前的工作是否被取消了。</p>
+
+<p>如果要支持并发工作，那么NSOperation子类需要至少override这四个方法:</p>
+
+<ul>
+<li>start</li>
+<li>isConcurrent</li>
+<li>isExecuting</li>
+<li>isFinished</li>
+</ul>
+
+
+<p>实现了一个基于Operation的下载器，在Sample Code中可以下载。</p>
+
+<p>```
+- (void)operationDidStart
+{</p>
+
+<pre><code>[self.lock lock];
+NSMutableURLRequest* request = [[NSMutableURLRequest alloc] initWithURL:self.URL
+                                                            cachePolicy:NSURLRequestReloadIgnoringCacheData
+                                                        timeoutInterval:self.timeoutInterval];
+[request setHTTPMethod: @"GET"];
+
+self.connection =[[NSURLConnection alloc] initWithRequest:request
+                                                 delegate:self
+                                         startImmediately:NO];
+[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+[self.connection start];
+[self.lock unlock];
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li><p>(void)operationDidFinish
+{
+  [self.lock lock];
+  [self willChangeValueForKey:@"isFinished"];
+  [self willChangeValueForKey:@"isExecuting"];</p>
+
+<p>  self.executing = NO;
+  self.finished = YES;</p>
+
+<p>  [self didChangeValueForKey:@"isExecuting"];
+  [self didChangeValueForKey:@"isFinished"];
+  [self.lock unlock];
+}</p></li>
+<li><p>(void)start
+{
+  [self.lock lock];
+  if ([self isCancelled])
+  {
+      [self willChangeValueForKey:@"isFinished"];
+      self.finished = YES;
+      [self didChangeValueForKey:@"isFinished"];
+      return;
+  }</p>
+
+<p>  [self willChangeValueForKey:@"isExecuting"];
+  [self performSelector:@selector(operationDidStart) onThread:[[self class] networkThread] withObject:nil waitUntilDone:NO];
+  self.executing = YES;
+  [self didChangeValueForKey:@"isExecuting"];
+  [self.lock unlock];
+}</p></li>
+<li><p>(void)cancel
+{
+  [self.lock lock];
+  [super cancel];
+  if (self.connection)
+  {
+      [self.connection cancel];
+      self.connection = nil;
+  }</p>
+
+<p>  [self.lock unlock];
+}</p></li>
+<li><p>(BOOL)isConcurrent {
+  return YES;
+}</p></li>
+<li><p>(BOOL)isExecuting {
+  return self.executing;
+}</p></li>
+<li><p>(BOOL)isFinished {
+  return self.finished;
+}</p></li>
+</ul>
+
+
+<p>```</p>
+
+<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
+
+<p>注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation有许多支持KVO的属性：</p>
+
+<ul>
+<li>isCancelled</li>
+<li>isConcurrent</li>
+<li>isExecuting</li>
+<li>isFinished</li>
+<li>isReady</li>
+<li>dependencies</li>
+<li>queuePriority</li>
+<li>completionBlock</li>
+</ul>
+
+
+<p>当然也不是说所有的KVO通知都需要自己去实现，例如通常你用不到addObserver到你工作的“isCancelled”属性，你只需要直接调用cancel方法就可以取消这个工作任务。</p>
+
+<p>实现NSOperation子类后，可以直接调用start或者添加到一个NSOperationQueue里：</p>
+
+<p>```
+NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+[queue addOperation:downloader];</p>
+
+<p>```</p>
+
+<h3>NSOperation和NSOperationQueue其他特性</h3>
+
+<p>工作是有优先级的，可以通过NSOperation的一下两个接口读取或者设置：</p>
+
+<p><code>
+- (NSOperationQueuePriority)queuePriority;
+- (void)setQueuePriority:(NSOperationQueuePriority)p;
+</code></p>
+
+<p>工作之间也可有从属依赖关系，只有依赖的工作完成后才会执行：</p>
+
+<p><code>
+- (void)addDependency:(NSOperation *)op;
+- (void)removeDependency:(NSOperation *)op;
+</code></p>
+
+<p>还可以通过下面接口设置运行NSOpration的子线程优先级：</p>
+
+<p><code>
+- (void)setQueuePriority:(NSOperationQueuePriority)priority;
+</code></p>
+
+<p>iOS4之后还可以往NSOperation上添加一个结束block，用于在工作执行结束之后的操作：</p>
+
+<p><code>
+- (void)setCompletionBlock:(void (^)(void))block;
+</code></p>
+
+<p>如果需要阻塞等待NSOperation工作结束(别在主线程这么干)，可以使用接口：</p>
+
+<p><code>
+- (void)waitUntilFinished;
+</code></p>
+
+<p>NSOperationQueue除了添加NSOperation外，也支持直接添加一个Block(iOS4之后)：</p>
+
+<p><code>
+- (void)addOperationWithBlock:(void (^)(void))block
+</code></p>
+
+<p>NSOperationQueue可以取消所有添加的工作：</p>
+
+<p><code>
+- (void)cancelAllOperations;
+</code>
+也可以阻塞式的等待所有工作结束(别在主线程这么干)：</p>
+
+<p><code>
+- (void)waitUntilAllOperationsAreFinished;
+</code></p>
+
+<p>在NSOperation对象中获得被添加的NSOperationQueue队列：</p>
+
+<p><code>
++ (id)currentQueue
+</code></p>
+
+<p>要获得一个绑定在主线程的NSOperationQueue队列：</p>
+
+<p><code>
++ (id)mainQueue
+</code></p>
+
+<h3>NSInvocationOperation &amp; NSBlockOperation</h3>
+
+<p>其实除非必要，简单的工作完全可以使用官方提供的NSOperation两个子类NSInvocationOperation和NSBlockOperation来实现。</p>
+
+<p>NSInvocationOperation：</p>
+
+<p>```
+NSInvocationOperation* theOp = [[NSInvocationOperation alloc]</p>
+
+<pre><code>                   initWithTarget:self                 
+                      selector:@selector(myTaskMethod:)                                           
+                        object:data];
+</code></pre>
+
+<p>```</p>
+
+<p>NSBlockOperation:</p>
+
+<p>```
+NSBlockOperation* theOp = [NSBlockOperation blockOperationWithBlock: ^{</p>
+
+<pre><code>  NSLog(@"Beginning operation.\n");
+  // Do some work.
+</code></pre>
+
+<p>   }];
+```</p>
+
+<p>接口非常简单，一看便会。</p>
+
+<h3>Sample Code</h3>
+
+<p>本文例子放在<a href="https://github.com/hrchen/ExamplesForBlog">Github</a>上（工程NSURLConnectionExample中的PTOperationDownloader）。</p>
+
+<h3>参考资料</h3>
+
+<p><a href="http://developer.apple.com/library/mac/#documentation/General/Conceptual/ConcurrencyProgrammingGuide/OperationObjects/OperationObjects.html">Concurrency Programming Guide</a></p>
+
+<p><a href="http://developer.apple.com/library/mac/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html">NSOperation Class Reference</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Block的引用循环问题 (ARC & non-ARC)]]></title>
+    <link href="http://hrchen.com/2013/06/retain-cycle-in-block/"/>
+    <updated>2013-06-27T00:32:00+08:00</updated>
+    <id>http://hrchen.com/2013/06/retain-cycle-in-block</id>
+    <content type="html"><![CDATA[<p>2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持，第一次使用Block感觉满简单好用的，但是慢慢也遇到很多坑。本文聊聊ARC和non-ARC下Block使用中的引用循环问题，最近遇到了好几次这种问题，还是深入记录下。先来套<a href="http://blog.parse.com/2013/02/05/objective-c-blocks-quiz/">题目</a>热热身，貌似能够全部答对的人蛮少的</p>
+
+<h3>Block实现原理</h3>
+
+<p>首先探究下Block的实现原理，由于Objective-C是C语言的超集，既然OC中的NSObject对象其实是由C语言的struct+isa指针实现的，那么Block的内部实现估计也一样，以下三篇Blog对Block的实现机制做了详细研究：</p>
+
+<ul>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-1/">A look inside blocks: Episode 1</a></li>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-2/">A look inside blocks: Episode 2</a></li>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-3/">A look inside blocks: Episode 3</a></li>
+</ul>
+
+
+<p>虽然实现细节看着头痛，不过发现Block果然是和OC中的NSObject类似，也是用struct实现出来的东西。这个是LLVM项目compiler-rt分析的block头文<a href="https://llvm.org/svn/llvm-project/compiler-rt/trunk/BlocksRuntime/Block_private.h">Block_private.h</a>头文件中关于Block的struct声明：</p>
+
+<!--more-->
+
+
+<p>```
+struct Block_descriptor {</p>
+
+<pre><code>unsigned long int reserved;
+unsigned long int size;
+void (*copy)(void *dst, void *src);
+void (*dispose)(void *);
+</code></pre>
+
+<p>};</p>
+
+<p>struct Block_layout {</p>
+
+<pre><code>void *isa;
+int flags;
+int reserved;
+void (*invoke)(void *, ...);
+struct Block_descriptor *descriptor;
+/* Imported variables. */
+</code></pre>
+
+<p>};</p>
+
+<p>```</p>
+
+<p>我们发现Block_layout中也有一个isa指针，像极了NSobject内部实现struct中的isa指针。这里的isa可能指向三种类型之一的Block：</p>
+
+<ul>
+<li>_NSConcreteGlobalBlock：全局类型Block，在编译器就已经确定，直接放在代码段__TEXT上。直接在NSLog中打印的类型为__NSGlobalBlock__。</li>
+<li>_NSConcreteStackBlock：位于栈上分配的Block，即__NSStaclBlock__。</li>
+<li>_NSConcreteMallocBlock：位于堆上分配的Block，即__NSMallocBlock__。</li>
+</ul>
+
+
+<p>为什么会有这么多种类呢？首先来看全局类型Block，看例子：</p>
+
+<p>```
+void addBlock(NSMutableArray *array) {
+  [array addObject:^{</p>
+
+<pre><code>printf("global block\n");
+</code></pre>
+
+<p>  }];
+}</p>
+
+<p>void example() {
+  NSMutableArray *array = [NSMutableArray array];
+  addBlock(array);
+  void (^block)() = [array objectAtIndex:0];
+  block();
+}</p>
+
+<p>```
+为什么addBlock中添加到array中的Block属于全局Block呢？因为它不需要运行时(Runtime)任何的状态来改变行为，不需要放在堆上或者栈上，直接编译后在代码段中即可，就像个c函数一样。这种类型的Block在ARC和non-ARC情况下没有差别。</p>
+
+<p>这个Block访问了作用域外的变量d，在实现上就是这个block会多一个成员变量对应这个d，在赋值<sup>block</sup>时会将方法exmpale中的d变量值复制到成员变量中，从而实现访问。</p>
+
+<p>```
+void example() {</p>
+
+<pre><code>int d = 5;
+void (^block)() = ^() {
+    printf("%d\n", d);
+};
+block();
+</code></pre>
+
+<p>}
+```</p>
+
+<p>如果要修改d呢？：</p>
+
+<p>```
+void example() {</p>
+
+<pre><code>int d = 5;
+void (^block)() = ^() {
+    d++;
+    printf("%d\n", d);
+};
+block();
+printf("%d\n", d);
+</code></pre>
+
+<p>}
+<code>``
+由于局部变量d和这个block的实现不在同一作用域，仅仅在调用过程中用到了值传递，所以不能直接修改，而需要加一个标识符</code><strong>block int d = 5;`，那么block就可以实现对这个局部变量的修改了。如果是这种</strong>block标识的变量，在Block实现中不再是简单的一个成员变量，而是对应一个新的结构体表示这个<strong>block变量。</strong>block的本质是引入了一个新的<strong>Block_byref<em>{$var_name}</em>{$index}结构体，被</strong>block关键字修饰的变量就被放到这个结构体中。另外，block结构体通过引入<em><em>Block_byref</em>{$var_name}</em>{$index}指针类型的成员，得以间接访问到Block的外部变量。这样对Block外的变量访问从值传递转变为引用，从而有了修改内容的能力。</p>
+
+<p>正常我们使用Block是在栈上生成的，离开了栈作用域便释放了，如果copy一个Block，那么会将这个Block copy到堆上分配，这样就不再受栈的限制，可以随意使用啦。例如：</p>
+
+<p>```
+typedef void (^TestBlock)();</p>
+
+<p>TestBlock getBlock() {
+  char e = 'E';
+  void (^returnedBlock)() = ^{</p>
+
+<pre><code>printf("%c\n", e);
+</code></pre>
+
+<p>  };
+  return returnedBlock;
+}</p>
+
+<p>void example() {
+  TestBlock block = getBlock();
+  block();
+}
+```</p>
+
+<p>函数getBlock中声明并赋值的returnedBlock，一开始是在栈上分配的，属于NSStackBlock，如果是non-ARC情况下return这个NSStackBlock，那么其实已经被销毁了，在函数中example()使用时就会crash。如果是ARC情况下，getBlock返回的block会自动copy到堆上，那么block的类型就是NSMallocBlock，可以在example()中继续使用。要在Non-ARC情况下正常运行，那么就应该修改为：</p>
+
+<p>```
+TestBlock getBlock() {
+  char e = 'E';
+  void (^returnedBlock)() = ^{</p>
+
+<pre><code>printf("%c\n", e);
+</code></pre>
+
+<p>  };
+  return [[returnedBlock copy] autorelease];
+}
+```</p>
+
+<h3>Block中的循环引用问题</h3>
+
+<p>扯了这么多，回到Block的循环引用问题，由于我们很多行为会导致Block的copy，而当Block被copy时，会对block中用到的对象产生强引用(ARC下)或者引用计数加一(non-ARC下)。</p>
+
+<p>如果遇到这种情况：</p>
+
+<p>```
+@property(nonatomic, readwrite, copy) completionBlock completionBlock;</p>
+
+<p>//========================================
+self.completionBlock = ^ {</p>
+
+<pre><code>    if (self.success) {
+        self.success(self.responseData);
+    }
+}
+</code></pre>
+
+<p>};
+```
+对象有一个Block属性，然而这个Block属性中又引用了对象的其他成员变量，那么就会对这个变量本身产生强应用，那么变量本身和他自己的Block属性就形成了循环引用。在ARC下需要修改成这样：</p>
+
+<p>```
+@property(nonatomic, readwrite, copy) completionBlock completionBlock;</p>
+
+<p>//========================================
+__weak typeof(self) weakSelf = self;
+self.completionBlock = ^ {</p>
+
+<pre><code>if (weakSelf.success) {
+    weakSelf.success(weakSelf.responseData);
+}
+</code></pre>
+
+<p>};
+<code>``
+也就是生成一个对自身对象的弱引用，如果是倒霉催的项目还需要支持iOS4.3，就用\_\_unsafe_unretained替代\_\_weak。如果是non-ARC环境下就将\_\_weak替换为\_\_block即可。non-ARC情况下，\_\_block变量的含义是在Block中引入一个新的结构体成员变量指向这个\_\_block变量，那么</code>__block typeof(self) weakSelf = self;`就表示Block别再对self对象retain啦，这就打破了循环引用。</p>
+]]></content>
+  </entry>
+  
+</feed>
