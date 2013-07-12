@@ -160,7 +160,7 @@ myController.completionBlock= ^() {
 ```
 上面代码会打印nil。
 
-10) 如果有需要ARC管理的文件，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
+10) 如果有不需要ARC管理的文件(例如还未支持ARC的第三方库)，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
 {% img /images/post/xcode-fno-objc-arc.jpg %}
 
 11) 在MRC情况下NSString * __block myString是不会被retain的，但是ARC情况下NSString * __block myString实际会被retian，如果需要和MRC下同样的语义，请使用：__block NSString * __unsafe_unretained myString 或者__block NSString * __weak myString。
