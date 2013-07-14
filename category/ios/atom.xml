@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-11T01:18:09+08:00</updated>
+  <updated>2013-07-14T23:53:57+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -196,12 +196,46 @@ NSLog(@"name: %@", name);
 ```
 上面代码会打印nil。</p>
 
-<p>10) 如果有需要ARC管理的文件，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
+<p>10) 如果有不需要ARC管理的文件(例如还未支持ARC的第三方库)，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
 <img src="/images/post/xcode-fno-objc-arc.jpg"></p>
 
 <p>11) 在MRC情况下NSString * <strong>block myString是不会被retain的，但是ARC情况下NSString * </strong>block myString实际会被retian，如果需要和MRC下同样的语义，请使用：<strong>block NSString * </strong>unsafe_unretained myString 或者<strong>block NSString * </strong>weak myString。</p>
 
 <p>12) iOS 4.*系统不支持weak语义，可以使用unsafe_unretained替代，但是可能导致悬空指针问题，需要小心对待。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[几个有用的Objective-C新特性]]></title>
+    <link href="http://hrchen.com/2013/07/modern-objective-c-until-2013/"/>
+    <updated>2013-07-04T21:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/modern-objective-c-until-2013</id>
+    <content type="html"><![CDATA[<p>Objective-C已经稳定在TIOBE编程语言排行榜前五名，2010年刚接触Objective-C还是因为公司在搞Mac版企业IM开发，那时候OC还几乎无人问津，这些年倒是风光无限，只能感叹当初踩对点了，不清楚未来10年又会有哪些语言流行起来，下一个会不会是<a href="http://golang.org/">go</a>？。这几年来Objective-C的进化速度也是非常快，Apple不断添加新的特性到Objective-C，例如ARC、Block等，以下挑些个人感觉对开发效率影响比较大的新特性来说：</p>
+
+<h3>不用再写sythesize</h3>
+
+<p>以前声明属性Property，都要在类的实现@implementation里将属性和成员变量做相应的synthesize，synthesize的含义是将属性和成员变量做关联。早期声明一个属性，需要同样声明一个成员变量，然后<code>@synthersize date=_date;</code>将属性与成员变量关联起来，后来可以无需声明成员变量，<code>@synthersize date=_date;</code>可以自动帮你声明一个名字为_date的成员变量，<code>@synthersize date</code>就是自动声明一个成员变量date。</p>
+
+<p>Xcode4.4以后，synthesize关键字也不需要写了，例如<code>@property (nonatomic, readwrite, retain) NSDate *date;</code>编译器可以自动绑定并且生成对应的成员变量<code>NSDate *_date</code>，相当于是自动添加了<code>@synthesize date=_date;</code>。这样既不用再声明成员变量，也不要费神写@synthesize，方便不少。</p>
+
+<!--more-->
+
+
+<p>当然凡事有例外，如果同时实现了setter和getter方法，例如上面你实现了<code>-(void)setDate</code>和<code>-(NSDate *)date</code>，那么编译器就不会自动帮你synthesize。这里同时实现setter和getter方法是针对readwrite属性来说的，对于readonly属性，那么你实现了getter方法即<code>-(NSDate *)date</code>也同样不会自动绑定成员变量。</p>
+
+<h3>成员方法的顺序</h3>
+
+<p>以前在.m实现文件中实现方法时经常会引用其他成员方法，而如果引用的成员方法未在头文件或者匿名catrgory中声明，同时也不在引用者前面，那么编译器会报未找到该方法的错误。现在新的编译器中，只要在实现文件里的成员方法，在其他任何位置的方法中调用都不再报错，Nice!</p>
+
+<h3>不一样的NSNumber、NSArray和NSDictionary</h3>
+
+<p>最新的OC语法里还添加了许多类似脚本语言的特性，例如以前要生成NSNumber满费劲，都是[NSNumber numberWith***]的写法，太多冗余。现在方便了，可以用@符号替代，例如<code>[NSNumber numberWithChar:‘c’]</code>可以直接表示为<code>@'c'</code>，<code>[NSNumber numberWithInt:123]</code>直接表示为<code>@123</code>，<code>[NSNumber numberWithFloat:1.23f]</code>z直接写为<code>@1.23f</code>，其他类型同理变换。</p>
+
+<p>NSArray的变化也是类似的，<code>[NSArray array]</code>就是<code>@[]</code>，<code>[NSArray arrayWithObject:x]</code>就是 <code>@[x]</code>，<code>[NSArray arrayWithObjects:x, y, z, nil]</code>就是<code>@[x, y, z]</code>，不过这种方式生成的是NSArray，要生成NSMutableArray呢？也简单，直接调用mutableCopy即可，例如<code>[@[x, y, z] mutableCopy]</code>。如果要访问第1个元素，以前需要写成<code>[array objectAtIndex:0]</code>，现在可以直接用<code>array[0]</code>访问，像极了脚本语言。</p>
+
+<p>NSDictionary的变化和NSArray类似，不同的是用<code>@{}</code>,例如<code>[NSDictionary dictionaryWithObject:value forKey:key]</code>可以表示为<code>@{key: value}</code>。访问时也和大多数脚本语言一样，用<code>dict[key]</code>来获得键值对应的值。</p>
+
+<p>至于以上简化的方法到底要不要用，还是看自己或者项目组的习惯了，个人建议是在符合统一编码规范的情况下，尽量拥抱变化，毕竟这些都是为了优化生产效率的变化。</p>
 ]]></content>
   </entry>
   
@@ -534,265 +568,6 @@ return theManager;
 <p>故事还没有结束 ，如果你实现了connectionDidFinishDownloading:destinationURL并且想通过回到得到的destinationURL读取保存数据的文件时，令人惊讶的发现这个文件居然不存在，因为这类NSURLConnectionDataDelegate回调是用于Newsstand类型的App开发的，用于将杂志等信息保存到本地文件。实在想不通为什么只有Newsstand类型App才能用这组接口，很多开发者早已发了bug报告给Apple，Apple也已经确认，但是从iOS5到了iOS7，这个“bug”还是没有被修复。</p>
 
 <p>附带我在Stackoverflow上的<a href="http://stackoverflow.com/questions/11047169/how-may-delegate-method-from-one-protocol-prevent-execution-of-another-one-from/17369617#17369617">回答</a>。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS多线程编程Part 2/3 - NSOperation]]></title>
-    <link href="http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-2/"/>
-    <updated>2013-06-28T23:59:00+08:00</updated>
-    <id>http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-2</id>
-    <content type="html"><![CDATA[<p>多线程编程Part 1介绍了NSThread以及NSRunLoop，这篇Blog介绍另一种并发编程技术：NSOPeration。</p>
-
-<h3>NSOperation &amp; NSOperationQueue</h3>
-
-<p>从头文件NSOperation.h来看接口是非常的简洁，NSOperation本身是一个抽象类，定义了一个要执行的工作，NSOperationQueue是一个工作队列，当工作加入到队列后，NSOperationQueue会自动按照优先顺序及工作的从属依赖关系(如果有的话)组织执行。</p>
-
-<p>NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起<code>-start</code>也可以直接执行。</p>
-
-<!--more-->
-
-
-<p>在继承NSOpertaion后，对于非并发的工作，只需要实现NSOperation子类的main方法：</p>
-
-<p>```
--(void)main
-{
-   @try
-   {</p>
-
-<pre><code>  // 处理工作任务
-</code></pre>
-
-<p>   }
-   @catch(...)
-   {</p>
-
-<pre><code>  // 处理异常，但是不能再重新抛出异常
-</code></pre>
-
-<p>   }
-}
-<code>``
-由于NSOperation的工作是可以取消Cancel的，那么你在main方法处理工作时就需要不断轮询</code>[self isCancelled]`确认当前的工作是否被取消了。</p>
-
-<p>如果要支持并发工作，那么NSOperation子类需要至少override这四个方法:</p>
-
-<ul>
-<li>start</li>
-<li>isConcurrent</li>
-<li>isExecuting</li>
-<li>isFinished</li>
-</ul>
-
-
-<p>实现了一个基于Operation的下载器，在Sample Code中可以下载。</p>
-
-<p>```
-- (void)operationDidStart
-{</p>
-
-<pre><code>[self.lock lock];
-NSMutableURLRequest* request = [[NSMutableURLRequest alloc] initWithURL:self.URL
-                                                            cachePolicy:NSURLRequestReloadIgnoringCacheData
-                                                        timeoutInterval:self.timeoutInterval];
-[request setHTTPMethod: @"GET"];
-
-self.connection =[[NSURLConnection alloc] initWithRequest:request
-                                                 delegate:self
-                                         startImmediately:NO];
-[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
-[self.connection start];
-[self.lock unlock];
-</code></pre>
-
-<p>}</p>
-
-<ul>
-<li><p>(void)operationDidFinish
-{
-  [self.lock lock];
-  [self willChangeValueForKey:@"isFinished"];
-  [self willChangeValueForKey:@"isExecuting"];</p>
-
-<p>  self.executing = NO;
-  self.finished = YES;</p>
-
-<p>  [self didChangeValueForKey:@"isExecuting"];
-  [self didChangeValueForKey:@"isFinished"];
-  [self.lock unlock];
-}</p></li>
-<li><p>(void)start
-{
-  [self.lock lock];
-  if ([self isCancelled])
-  {
-      [self willChangeValueForKey:@"isFinished"];
-      self.finished = YES;
-      [self didChangeValueForKey:@"isFinished"];
-      return;
-  }</p>
-
-<p>  [self willChangeValueForKey:@"isExecuting"];
-  [self performSelector:@selector(operationDidStart) onThread:[[self class] networkThread] withObject:nil waitUntilDone:NO];
-  self.executing = YES;
-  [self didChangeValueForKey:@"isExecuting"];
-  [self.lock unlock];
-}</p></li>
-<li><p>(void)cancel
-{
-  [self.lock lock];
-  [super cancel];
-  if (self.connection)
-  {
-      [self.connection cancel];
-      self.connection = nil;
-  }</p>
-
-<p>  [self.lock unlock];
-}</p></li>
-<li><p>(BOOL)isConcurrent {
-  return YES;
-}</p></li>
-<li><p>(BOOL)isExecuting {
-  return self.executing;
-}</p></li>
-<li><p>(BOOL)isFinished {
-  return self.finished;
-}</p></li>
-</ul>
-
-
-<p>```</p>
-
-<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的，这里是个坑，如果你没有实现isConcurrent，默认是返回NO，那么你的NSOperation就不是并发执行而是串行执行的，大多数情况下这可不是你想要的；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
-
-<p>注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation有许多支持KVO的属性：</p>
-
-<ul>
-<li>isCancelled</li>
-<li>isConcurrent</li>
-<li>isExecuting</li>
-<li>isFinished</li>
-<li>isReady</li>
-<li>dependencies</li>
-<li>queuePriority</li>
-<li>completionBlock</li>
-</ul>
-
-
-<p>当然也不是说所有的KVO通知都需要自己去实现，例如通常你用不到addObserver到你工作的“isCancelled”属性，你只需要直接调用cancel方法就可以取消这个工作任务。</p>
-
-<p>实现NSOperation子类后，可以直接调用start或者添加到一个NSOperationQueue里：</p>
-
-<p>```
-NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-[queue addOperation:downloader];</p>
-
-<p>```</p>
-
-<h3>NSOperation和NSOperationQueue其他特性</h3>
-
-<p>工作是有优先级的，可以通过NSOperation的一下两个接口读取或者设置：</p>
-
-<p><code>
-- (NSOperationQueuePriority)queuePriority;
-- (void)setQueuePriority:(NSOperationQueuePriority)p;
-</code></p>
-
-<p>工作之间也可有从属依赖关系，只有依赖的工作完成后才会执行：</p>
-
-<p><code>
-- (void)addDependency:(NSOperation *)op;
-- (void)removeDependency:(NSOperation *)op;
-</code></p>
-
-<p>还可以通过下面接口设置运行NSOpration的子线程优先级：</p>
-
-<p><code>
-- (void)setQueuePriority:(NSOperationQueuePriority)priority;
-</code></p>
-
-<p>iOS4之后还可以往NSOperation上添加一个结束block，用于在工作执行结束之后的操作：</p>
-
-<p><code>
-- (void)setCompletionBlock:(void (^)(void))block;
-</code></p>
-
-<p>如果需要阻塞等待NSOperation工作结束(别在主线程这么干)，可以使用接口：</p>
-
-<p><code>
-- (void)waitUntilFinished;
-</code></p>
-
-<p>NSOperationQueue除了添加NSOperation外，也支持直接添加一个Block(iOS4之后)：</p>
-
-<p><code>
-- (void)addOperationWithBlock:(void (^)(void))block
-</code></p>
-
-<p>NSOperationQueue可以取消所有添加的工作：</p>
-
-<p><code>
-- (void)cancelAllOperations;
-</code>
-也可以阻塞式的等待所有工作结束(别在主线程这么干)：</p>
-
-<p><code>
-- (void)waitUntilAllOperationsAreFinished;
-</code></p>
-
-<p>在NSOperation对象中获得被添加的NSOperationQueue队列：</p>
-
-<p><code>
-+ (id)currentQueue
-</code></p>
-
-<p>要获得一个绑定在主线程的NSOperationQueue队列：</p>
-
-<p><code>
-+ (id)mainQueue
-</code></p>
-
-<h3>NSInvocationOperation &amp; NSBlockOperation</h3>
-
-<p>其实除非必要，简单的工作完全可以使用官方提供的NSOperation两个子类NSInvocationOperation和NSBlockOperation来实现。</p>
-
-<p>NSInvocationOperation：</p>
-
-<p>```
-NSInvocationOperation* theOp = [[NSInvocationOperation alloc]</p>
-
-<pre><code>                   initWithTarget:self                 
-                      selector:@selector(myTaskMethod:)                                           
-                        object:data];
-</code></pre>
-
-<p>```</p>
-
-<p>NSBlockOperation:</p>
-
-<p>```
-NSBlockOperation* theOp = [NSBlockOperation blockOperationWithBlock: ^{</p>
-
-<pre><code>  NSLog(@"Beginning operation.\n");
-  // Do some work.
-</code></pre>
-
-<p>   }];
-```</p>
-
-<p>接口非常简单，一看便会。</p>
-
-<h3>Sample Code</h3>
-
-<p>本文例子放在<a href="https://github.com/hrchen/ExamplesForBlog">Github</a>上（工程NSURLConnectionExample中的PTOperationDownloader）。</p>
-
-<h3>参考资料</h3>
-
-<p><a href="http://developer.apple.com/library/mac/#documentation/General/Conceptual/ConcurrencyProgrammingGuide/OperationObjects/OperationObjects.html">Concurrency Programming Guide</a></p>
-
-<p><a href="http://developer.apple.com/library/mac/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html">NSOperation Class Reference</a></p>
 ]]></content>
   </entry>
   

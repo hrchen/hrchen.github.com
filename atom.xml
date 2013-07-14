@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-11T01:18:09+08:00</updated>
+  <updated>2013-07-14T23:53:57+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -216,12 +216,46 @@ Block对象常见的循环引用问题如下：</p>
 
 <p>上面代码会打印nil。</p>
 
-<p>10) 如果有需要ARC管理的文件，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
+<p>10) 如果有不需要ARC管理的文件(例如还未支持ARC的第三方库)，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
 <img src="http://hrchen.com/images/post/xcode-fno-objc-arc.jpg"></p>
 
 <p>11) 在MRC情况下NSString * <strong>block myString是不会被retain的，但是ARC情况下NSString * </strong>block myString实际会被retian，如果需要和MRC下同样的语义，请使用：<strong>block NSString * </strong>unsafe_unretained myString 或者<strong>block NSString * </strong>weak myString。</p>
 
 <p>12) iOS 4.*系统不支持weak语义，可以使用unsafe_unretained替代，但是可能导致悬空指针问题，需要小心对待。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[几个有用的Objective-C新特性]]></title>
+    <link href="http://hrchen.com/2013/07/modern-objective-c-until-2013/"/>
+    <updated>2013-07-04T21:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/modern-objective-c-until-2013</id>
+    <content type="html"><![CDATA[<p>Objective-C已经稳定在TIOBE编程语言排行榜前五名，2010年刚接触Objective-C还是因为公司在搞Mac版企业IM开发，那时候OC还几乎无人问津，这些年倒是风光无限，只能感叹当初踩对点了，不清楚未来10年又会有哪些语言流行起来，下一个会不会是<a href="http://golang.org/">go</a>？。这几年来Objective-C的进化速度也是非常快，Apple不断添加新的特性到Objective-C，例如ARC、Block等，以下挑些个人感觉对开发效率影响比较大的新特性来说：</p>
+
+<h3>不用再写sythesize</h3>
+
+<p>以前声明属性Property，都要在类的实现@implementation里将属性和成员变量做相应的synthesize，synthesize的含义是将属性和成员变量做关联。早期声明一个属性，需要同样声明一个成员变量，然后<code>@synthersize date=_date;</code>将属性与成员变量关联起来，后来可以无需声明成员变量，<code>@synthersize date=_date;</code>可以自动帮你声明一个名字为_date的成员变量，<code>@synthersize date</code>就是自动声明一个成员变量date。</p>
+
+<p>Xcode4.4以后，synthesize关键字也不需要写了，例如<code>@property (nonatomic, readwrite, retain) NSDate *date;</code>编译器可以自动绑定并且生成对应的成员变量<code>NSDate *_date</code>，相当于是自动添加了<code>@synthesize date=_date;</code>。这样既不用再声明成员变量，也不要费神写@synthesize，方便不少。</p>
+
+<!--more-->
+
+
+<p>当然凡事有例外，如果同时实现了setter和getter方法，例如上面你实现了<code>-(void)setDate</code>和<code>-(NSDate *)date</code>，那么编译器就不会自动帮你synthesize。这里同时实现setter和getter方法是针对readwrite属性来说的，对于readonly属性，那么你实现了getter方法即<code>-(NSDate *)date</code>也同样不会自动绑定成员变量。</p>
+
+<h3>成员方法的顺序</h3>
+
+<p>以前在.m实现文件中实现方法时经常会引用其他成员方法，而如果引用的成员方法未在头文件或者匿名catrgory中声明，同时也不在引用者前面，那么编译器会报未找到该方法的错误。现在新的编译器中，只要在实现文件里的成员方法，在其他任何位置的方法中调用都不再报错，Nice!</p>
+
+<h3>不一样的NSNumber、NSArray和NSDictionary</h3>
+
+<p>最新的OC语法里还添加了许多类似脚本语言的特性，例如以前要生成NSNumber满费劲，都是[NSNumber numberWith***]的写法，太多冗余。现在方便了，可以用@符号替代，例如<code>[NSNumber numberWithChar:‘c’]</code>可以直接表示为<code>@'c'</code>，<code>[NSNumber numberWithInt:123]</code>直接表示为<code>@123</code>，<code>[NSNumber numberWithFloat:1.23f]</code>z直接写为<code>@1.23f</code>，其他类型同理变换。</p>
+
+<p>NSArray的变化也是类似的，<code>[NSArray array]</code>就是<code>@[]</code>，<code>[NSArray arrayWithObject:x]</code>就是 <code>@[x]</code>，<code>[NSArray arrayWithObjects:x, y, z, nil]</code>就是<code>@[x, y, z]</code>，不过这种方式生成的是NSArray，要生成NSMutableArray呢？也简单，直接调用mutableCopy即可，例如<code>[@[x, y, z] mutableCopy]</code>。如果要访问第1个元素，以前需要写成<code>[array objectAtIndex:0]</code>，现在可以直接用<code>array[0]</code>访问，像极了脚本语言。</p>
+
+<p>NSDictionary的变化和NSArray类似，不同的是用<code>@{}</code>,例如<code>[NSDictionary dictionaryWithObject:value forKey:key]</code>可以表示为<code>@{key: value}</code>。访问时也和大多数脚本语言一样，用<code>dict[key]</code>来获得键值对应的值。</p>
+
+<p>至于以上简化的方法到底要不要用，还是看自己或者项目组的习惯了，个人建议是在符合统一编码规范的情况下，尽量拥抱变化，毕竟这些都是为了优化生产效率的变化。</p>
 ]]></content>
   </entry>
   
@@ -1034,7 +1068,7 @@ Block对象常见的循环引用问题如下：</p>
 
 <ul>
 <li>_NSConcreteGlobalBlock：全局类型Block，在编译器就已经确定，直接放在代码段__TEXT上。直接在NSLog中打印的类型为__NSGlobalBlock__。</li>
-<li>_NSConcreteStackBlock：位于栈上分配的Block，即__NSStaclBlock__。</li>
+<li>_NSConcreteStackBlock：位于栈上分配的Block，即__NSStackBlock__。</li>
 <li>_NSConcreteMallocBlock：位于堆上分配的Block，即__NSMallocBlock__。</li>
 </ul>
 

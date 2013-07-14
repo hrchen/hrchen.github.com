@@ -150,6 +150,48 @@
   
 
 
+<time datetime="2013-07-04T21:20:00+08:00" data-updated="true" itemprop="datePublished">Jul 4<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/modern-objective-c-until-2013/" itemprop="url">几个有用的Objective-C新特性</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>Objective-C已经稳定在TIOBE编程语言排行榜前五名，2010年刚接触Objective-C还是因为公司在搞Mac版企业IM开发，那时候OC还几乎无人问津，这些年倒是风光无限，只能感叹当初踩对点了，不清楚未来10年又会有哪些语言流行起来，下一个会不会是<a href="http://golang.org/">go</a>？。这几年来Objective-C的进化速度也是非常快，Apple不断添加新的特性到Objective-C，例如ARC、Block等，以下挑些个人感觉对开发效率影响比较大的新特性来说：</p>
+
+<h3>不用再写sythesize</h3>
+
+<p>以前声明属性Property，都要在类的实现@implementation里将属性和成员变量做相应的synthesize，synthesize的含义是将属性和成员变量做关联。早期声明一个属性，需要同样声明一个成员变量，然后<code>@synthersize date=_date;</code>将属性与成员变量关联起来，后来可以无需声明成员变量，<code>@synthersize date=_date;</code>可以自动帮你声明一个名字为_date的成员变量，<code>@synthersize date</code>就是自动声明一个成员变量date。</p>
+
+<p>Xcode4.4以后，synthesize关键字也不需要写了，例如<code>@property (nonatomic, readwrite, retain) NSDate *date;</code>编译器可以自动绑定并且生成对应的成员变量<code>NSDate *_date</code>，相当于是自动添加了<code>@synthesize date=_date;</code>。这样既不用再声明成员变量，也不要费神写@synthesize，方便不少。</p>
+
+
+		
+		<a href="/2013/07/modern-objective-c-until-2013/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
 <time datetime="2013-07-03T22:29:00+08:00" data-updated="true" itemprop="datePublished">Jul 3<span>rd</span>, 2013</time></div>
 		<div class="tags">
 
@@ -628,46 +670,11 @@
 
 </article>
 
-
-    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
-	<div class="meta">
-		<div class="date">
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-05-26T22:27:00+08:00" data-updated="true" itemprop="datePublished">May 26<span>th</span>, 2013</time></div>
-		<div class="tags">
-
-
-	<a class='category' href='/category/xian-che/'>闲扯</a>
-
-
-</div>
-		
-	</div>
-	<h1 class="title" itemprop="name"><a href="/2013/05/my-first-blog/" itemprop="url">重新开始写Blog</a></h1>
-	<div class="entry-content" itemprop="articleBody">
-		<p>最近好几次被问到有没有个人Blog，惭愧=。=~~~~虽然曾经搭过WordPress、注册过Blogger，都没能坚持下来，其实写Blog对技术人员来说是很好的总结方式，值得坚持。</p>
-
-<p>既然要整blog，当然要用正夯的工具，目前最方便的就是github pages啦，搭个<a href="https://github.com/imathis/octopress">octopress</a>，找个漂亮<a href="https://github.com/shashankmehta/greyshade">主题</a>，直接上！发现markdown写起来蛮像读书时写论文用的<a href="http://www.latex-project.org/">LaTex</a>，可以让你专注于码字，而不是格式。</p>
-
-		
-		
-	</div>
-
-</article>
-
 </div>
 <nav id="pagenavi">
     
+    
+        <a href="/page/2/" class="next">Next</a>
     
     <div class="center"><a href="/blog/archives">Blog Archives</a></div>
 </nav></div>
