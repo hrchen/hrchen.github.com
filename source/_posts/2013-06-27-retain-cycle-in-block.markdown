@@ -43,7 +43,7 @@ struct Block_layout {
 我们发现Block_layout中也有一个isa指针，像极了NSobject内部实现struct中的isa指针。这里的isa可能指向三种类型之一的Block：
 
 * _NSConcreteGlobalBlock：全局类型Block，在编译器就已经确定，直接放在代码段__TEXT上。直接在NSLog中打印的类型为\_\_NSGlobalBlock\_\_。
-* _NSConcreteStackBlock：位于栈上分配的Block，即\_\_NSStaclBlock\_\_。
+* _NSConcreteStackBlock：位于栈上分配的Block，即\_\_NSStackBlock\_\_。
 * _NSConcreteMallocBlock：位于堆上分配的Block，即\_\_NSMallocBlock\_\_。
 
 为什么会有这么多种类呢？首先来看全局类型Block，看例子：
