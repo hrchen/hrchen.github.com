@@ -30,7 +30,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 * Main Queue：关联到主线程的队列，可以使用函数dispatch_get_main_queue()获得，加到这个队列中的工作都会分发到主线程运行。主线程只有一个，因此很明显这个是串行队列，每次运行一个工作。
 * Global Queue：全局队列是并发队列，又根据优先级细分为高优先级、默认优先级和低优先级三种。通过dispatch_get_global_queue加上优先级参数获得这个全局队列，例如`dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)`
-* 自定义Queue：自己创建一个队列，通过函数dispatch_queue_create创建，例如`dispatch_queue_create("com.kiloapp.test", 0)`。第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名；第二个参数是创建的queue的类型，iOS 4.3以前只支持串行，即DISPATCH_QUEUE_SERIAL(就是NULL)，iOS4.3以后也开始支持并行队列，即参数DISPATCH_QUEUE_CONCURRENT。
+* 自定义Queue：自己创建一个队列，通过函数dispatch_queue_create创建，例如`dispatch_queue_create("com.kiloapp.test", NULL)`。第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名；第二个参数是创建的queue的类型，iOS 4.3以前只支持串行，即DISPATCH_QUEUE_SERIAL(就是NULL)，iOS4.3以后也开始支持并行队列，即参数DISPATCH_QUEUE_CONCURRENT。
 
 ###添加工作任务
 添加工作任务到队列也非常简单，调用函数dispatch_async()，两个参数，一个就是Dispatch Queue，另一个是一个包含工作的Block，就像本文开头的示例一样。dispatch_async函数是非阻塞的，调用后会立刻返回，工作由系统分配线程去执行工作。因此另一种常见的使用模式是：
