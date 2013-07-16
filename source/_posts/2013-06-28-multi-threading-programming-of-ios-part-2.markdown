@@ -118,9 +118,9 @@ NSOperation是没法直接使用的，它只是提供了一个工作的基本逻
 
 ```
 
-start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的，这里是个坑，如果你没有实现isConcurrent，默认是返回NO，那么你的NSOperation就不是并发执行而是串行执行的，大多数情况下这可不是你想要的；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。
+start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的，这里曾经是个坑，如果你没有实现isConcurrent，默认是返回NO，那么你的NSOperation就不是并发执行而是串行执行的，不过在iOS5.0和OS X10.6之后，已经会默认忽略这个返回值，最终和Queue的maxConcurrentOperationCount最大并发操作值相关；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。
 
-注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation有许多支持KVO的属性：
+注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation支持KVO的属性有：
 
 * isCancelled
 * isConcurrent
@@ -161,6 +161,12 @@ NSOperationQueue *queue = [[NSOperationQueue alloc] init];
 
 ```
 - (void)setQueuePriority:(NSOperationQueuePriority)priority;
+```
+
+如果要设置Queue的并发操作数：
+
+```
+- (void)setMaxConcurrentOperationCount:(NSInteger)cnt;
 ```
 
 iOS4之后还可以往NSOperation上添加一个结束block，用于在工作执行结束之后的操作：
@@ -204,6 +210,7 @@ NSOperationQueue可以取消所有添加的工作：
 + (id)mainQueue
 ```
 
+还有些接口参考头文件NSOperation.h和[NSOperation Class Reference](http://developer.apple.com/library/mac/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html)，Apple的Class Reference文档描述还是很清晰的。
 
 ###NSInvocationOperation & NSBlockOperation
 
@@ -214,8 +221,8 @@ NSInvocationOperation：
 ```
 NSInvocationOperation* theOp = [[NSInvocationOperation alloc] 
                        initWithTarget:self                 
-		                  selector:@selector(myTaskMethod:)                                           
-                            object:data];
+		                     selector:@selector(myTaskMethod:)                                           
+                               object:data];
 ```
 
 NSBlockOperation:

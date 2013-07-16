@@ -6,11 +6,11 @@ comments: true
 categories: iOS
 ---
 
-前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。
+前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。
 
 
 ###前言
-GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：
+GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比自定义NSOperation更加方便，大大降低了多线程开发的门槛。示例：
 
 ```
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -30,7 +30,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 * Main Queue：关联到主线程的队列，可以使用函数dispatch_get_main_queue()获得，加到这个队列中的工作都会分发到主线程运行。主线程只有一个，因此很明显这个是串行队列，每次运行一个工作。
 * Global Queue：全局队列是并发队列，又根据优先级细分为高优先级、默认优先级和低优先级三种。通过dispatch_get_global_queue加上优先级参数获得这个全局队列，例如`dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)`
-* 自定义Queue：自己创建一个队列，只能是串行队列，可以理解为最终有一个独立的子线程帮你运行添加到这个队列中的工作任务。通过函数dispatch_queue_create创建，例如`dispatch_queue_create(@"com.kiloapp.test", 0)` ,第二个参数仅作保留，目前没有意义，第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名。
+* 自定义Queue：自己创建一个队列，通过函数dispatch_queue_create创建，例如`dispatch_queue_create("com.kiloapp.test", 0)`。第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名；第二个参数是创建的queue的类型，iOS 4.3以前只支持串行，即DISPATCH_QUEUE_SERIAL(就是NULL)，iOS4.3以后也开始支持并行队列，即参数DISPATCH_QUEUE_CONCURRENT。
 
 ###添加工作任务
 添加工作任务到队列也非常简单，调用函数dispatch_async()，两个参数，一个就是Dispatch Queue，另一个是一个包含工作的Block，就像本文开头的示例一样。dispatch_async函数是非阻塞的，调用后会立刻返回，工作由系统分配线程去执行工作。因此另一种常见的使用模式是：
@@ -47,7 +47,14 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 与dispatch_async对应的有一个dispatch_sync方法，它是阻塞式的，会一直等到添加的工作完成后才会返回。
 
-NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起`-start`也可以直接执行。
+除了添加Block到Dispatch Queue，iOS 4之后新增了添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：
+
+```
+dispatch_async_f(dispatch_queue_t queue,
+	             void *context,
+	             dispatch_function_t work);
+```
+其中第三个参数就是个函数指针，即`typedef void (*dispatch_function_t)(void *);`；第二个参数是传给这个函数的参数。
 
 ###Dispatch Group
 
@@ -104,6 +111,9 @@ dispatch_group_notify(group, queue, ^{
 dispatch_release(group);
 ```
 dispatch_group_notify函数可以将这个Group完成后的工作也同样添加到队列中（如果是需要更新UI，这个队列也可以是主队列），总之这样做就完全不会阻塞当前线程了。
+
+
+###Dispatch Apply
 
 如果就是要同步的执行对数组元素的逐个操作，GCD也提供了一个简便的dispatch_apply函数：
 
@@ -170,6 +180,7 @@ dispatch source创建后是出于suspend状态的，必须使用dispatch_resume�
     return theManager;
 }
 ```
+需要注意dispatch_once_t最好使用全局变量或者是static的，否则可能导致无法确定的行为。由于dispatch_once的调试非常困难，所以最好还是少用，单例应该是少数值得用的地方了。
 
 * 信号量Semaphore
 
