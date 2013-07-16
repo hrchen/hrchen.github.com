@@ -284,9 +284,9 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的，这里是个坑，如果你没有实现isConcurrent，默认是返回NO，那么你的NSOperation就不是并发执行而是串行执行的，大多数情况下这可不是你想要的；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
+<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的，这里曾经是个坑，如果你没有实现isConcurrent，默认是返回NO，那么你的NSOperation就不是并发执行而是串行执行的，不过在iOS5.0和OS X10.6之后，已经会默认忽略这个返回值，最终和Queue的maxConcurrentOperationCount最大并发操作值相关；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
 
-<p>注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation有许多支持KVO的属性：</p>
+<p>注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation支持KVO的属性有：</p>
 
 <ul>
 <li>isCancelled</li>
@@ -336,6 +336,12 @@
 </pre></td><td class='code'><pre><code class=''><span class='line'>- (void)setQueuePriority:(NSOperationQueuePriority)priority;</span></code></pre></td></tr></table></div></figure>
 
 
+<p>如果要设置Queue的并发操作数：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)setMaxConcurrentOperationCount:(NSInteger)cnt;</span></code></pre></td></tr></table></div></figure>
+
+
 <p>iOS4之后还可以往NSOperation上添加一个结束block，用于在工作执行结束之后的操作：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -378,6 +384,8 @@
 </pre></td><td class='code'><pre><code class=''><span class='line'>+ (id)mainQueue</span></code></pre></td></tr></table></div></figure>
 
 
+<p>还有些接口参考头文件NSOperation.h和<a href="http://developer.apple.com/library/mac/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html">NSOperation Class Reference</a>，Apple的Class Reference文档描述还是很清晰的。</p>
+
 <h3>NSInvocationOperation &amp; NSBlockOperation</h3>
 
 <p>其实除非必要，简单的工作完全可以使用官方提供的NSOperation两个子类NSInvocationOperation和NSBlockOperation来实现。</p>
@@ -390,8 +398,8 @@
 <span class='line-number'>4</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>NSInvocationOperation* theOp = [[NSInvocationOperation alloc] 
 </span><span class='line'>                       initWithTarget:self                 
-</span><span class='line'>                        selector:@selector(myTaskMethod:)                                           
-</span><span class='line'>                            object:data];</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>                           selector:@selector(myTaskMethod:)                                           
+</span><span class='line'>                               object:data];</span></code></pre></td></tr></table></div></figure>
 
 
 <p>NSBlockOperation:</p>

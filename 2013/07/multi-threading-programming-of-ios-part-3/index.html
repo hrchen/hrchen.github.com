@@ -7,7 +7,7 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="iOS多线程编程Part 3/3 - GCD 前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。 前言 GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。 &hellip;">
+	<meta name="description" content="iOS多线程编程Part 3/3 - GCD 前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。 前言 GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。 &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -86,11 +86,11 @@
 			<div class="mid-col-container">
 				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
 	<h1 class="title" itemprop="name">iOS多线程编程Part 3/3 - GCD</h1>
-	<div class="entry-content" itemprop="articleBody"><p>前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。</p>
+	<div class="entry-content" itemprop="articleBody"><p>前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。</p>
 
 <h3>前言</h3>
 
-<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
+<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比自定义NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -116,7 +116,7 @@
 <ul>
 <li>Main Queue：关联到主线程的队列，可以使用函数dispatch_get_main_queue()获得，加到这个队列中的工作都会分发到主线程运行。主线程只有一个，因此很明显这个是串行队列，每次运行一个工作。</li>
 <li>Global Queue：全局队列是并发队列，又根据优先级细分为高优先级、默认优先级和低优先级三种。通过dispatch_get_global_queue加上优先级参数获得这个全局队列，例如<code>dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)</code></li>
-<li>自定义Queue：自己创建一个队列，只能是串行队列，可以理解为最终有一个独立的子线程帮你运行添加到这个队列中的工作任务。通过函数dispatch_queue_create创建，例如<code>dispatch_queue_create(@"com.kiloapp.test", 0)</code> ,第二个参数仅作保留，目前没有意义，第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名。</li>
+<li>自定义Queue：自己创建一个队列，通过函数dispatch_queue_create创建，例如<code>dispatch_queue_create("com.kiloapp.test", 0)</code>。第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名；第二个参数是创建的queue的类型，iOS 4.3以前只支持串行，即DISPATCH_QUEUE_SERIAL(就是NULL)，iOS4.3以后也开始支持并行队列，即参数DISPATCH_QUEUE_CONCURRENT。</li>
 </ul>
 
 
@@ -142,7 +142,17 @@
 
 <p>与dispatch_async对应的有一个dispatch_sync方法，它是阻塞式的，会一直等到添加的工作完成后才会返回。</p>
 
-<p>NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起<code>-start</code>也可以直接执行。</p>
+<p>除了添加Block到Dispatch Queue，iOS 4之后新增了添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async_f(dispatch_queue_t queue,
+</span><span class='line'>               void *context,
+</span><span class='line'>               dispatch_function_t work);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中第三个参数就是个函数指针，即<code>typedef void (*dispatch_function_t)(void *);</code>；第二个参数是传给这个函数的参数。</p>
 
 <h3>Dispatch Group</h3>
 
@@ -227,6 +237,8 @@
 
 
 <p>dispatch_group_notify函数可以将这个Group完成后的工作也同样添加到队列中（如果是需要更新UI，这个队列也可以是主队列），总之这样做就完全不会阻塞当前线程了。</p>
+
+<h3>Dispatch Apply</h3>
 
 <p>如果就是要同步的执行对数组元素的逐个操作，GCD也提供了一个简便的dispatch_apply函数：</p>
 
@@ -332,6 +344,8 @@
 </span><span class='line'>    return theManager;
 </span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
 
+
+<p>需要注意dispatch_once_t最好使用全局变量或者是static的，否则可能导致无法确定的行为。由于dispatch_once的调试非常困难，所以最好还是少用，单例应该是少数值得用的地方了。</p>
 
 <ul>
 <li>信号量Semaphore</li>

@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-14T23:58:39+08:00</updated>
+  <updated>2013-07-16T23:47:42+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -311,11 +311,11 @@ Block对象常见的循环引用问题如下：</p>
     <link href="http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/"/>
     <updated>2013-07-02T21:20:00+08:00</updated>
     <id>http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3</id>
-    <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation的基本支持，本文聊聊iOS4发布时推出的神器GCD。</p>
+    <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。</p>
 
 <h3>前言</h3>
 
-<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
+<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比自定义NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -341,7 +341,7 @@ Block对象常见的循环引用问题如下：</p>
 <ul>
 <li>Main Queue：关联到主线程的队列，可以使用函数dispatch_get_main_queue()获得，加到这个队列中的工作都会分发到主线程运行。主线程只有一个，因此很明显这个是串行队列，每次运行一个工作。</li>
 <li>Global Queue：全局队列是并发队列，又根据优先级细分为高优先级、默认优先级和低优先级三种。通过dispatch_get_global_queue加上优先级参数获得这个全局队列，例如<code>dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)</code></li>
-<li>自定义Queue：自己创建一个队列，只能是串行队列，可以理解为最终有一个独立的子线程帮你运行添加到这个队列中的工作任务。通过函数dispatch_queue_create创建，例如<code>dispatch_queue_create(@"com.kiloapp.test", 0)</code> ,第二个参数仅作保留，目前没有意义，第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名。</li>
+<li>自定义Queue：自己创建一个队列，通过函数dispatch_queue_create创建，例如<code>dispatch_queue_create("com.kiloapp.test", 0)</code>。第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名；第二个参数是创建的queue的类型，iOS 4.3以前只支持串行，即DISPATCH_QUEUE_SERIAL(就是NULL)，iOS4.3以后也开始支持并行队列，即参数DISPATCH_QUEUE_CONCURRENT。</li>
 </ul>
 
 
@@ -367,7 +367,17 @@ Block对象常见的循环引用问题如下：</p>
 
 <p>与dispatch_async对应的有一个dispatch_sync方法，它是阻塞式的，会一直等到添加的工作完成后才会返回。</p>
 
-<p>NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起<code>-start</code>也可以直接执行。</p>
+<p>除了添加Block到Dispatch Queue，iOS 4之后新增了添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async_f(dispatch_queue_t queue,
+</span><span class='line'>               void *context,
+</span><span class='line'>               dispatch_function_t work);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中第三个参数就是个函数指针，即<code>typedef void (*dispatch_function_t)(void *);</code>；第二个参数是传给这个函数的参数。</p>
 
 <h3>Dispatch Group</h3>
 
@@ -452,6 +462,8 @@ Block对象常见的循环引用问题如下：</p>
 
 
 <p>dispatch_group_notify函数可以将这个Group完成后的工作也同样添加到队列中（如果是需要更新UI，这个队列也可以是主队列），总之这样做就完全不会阻塞当前线程了。</p>
+
+<h3>Dispatch Apply</h3>
 
 <p>如果就是要同步的执行对数组元素的逐个操作，GCD也提供了一个简便的dispatch_apply函数：</p>
 
@@ -557,6 +569,8 @@ Block对象常见的循环引用问题如下：</p>
 </span><span class='line'>    return theManager;
 </span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
 
+
+<p>需要注意dispatch_once_t最好使用全局变量或者是static的，否则可能导致无法确定的行为。由于dispatch_once的调试非常困难，所以最好还是少用，单例应该是少数值得用的地方了。</p>
 
 <ul>
 <li>信号量Semaphore</li>
@@ -870,9 +884,9 @@ Block对象常见的循环引用问题如下：</p>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的，这里是个坑，如果你没有实现isConcurrent，默认是返回NO，那么你的NSOperation就不是并发执行而是串行执行的，大多数情况下这可不是你想要的；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
+<p>start方法是工作的入口，通常是你用来设置线程或者其他执行工作任务需要的运行环境的，注意不要调用[super start]；isConcurrent是标识这个Operation是否是并发执行的，这里曾经是个坑，如果你没有实现isConcurrent，默认是返回NO，那么你的NSOperation就不是并发执行而是串行执行的，不过在iOS5.0和OS X10.6之后，已经会默认忽略这个返回值，最终和Queue的maxConcurrentOperationCount最大并发操作值相关；isExecuting和isFinished是用来报告当前的工作执行状态情况的，注意必须是线程访问安全的。</p>
 
-<p>注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation有许多支持KVO的属性：</p>
+<p>注意你的实现要发出合适的KVO通知，因为如果你的NSOperation实现需要用到工作依赖从属特性，而你的实现里没有发出合适的“isFinished”KVO通知，依赖你的NSOperation就无法正常执行。NSOperation支持KVO的属性有：</p>
 
 <ul>
 <li>isCancelled</li>
@@ -922,6 +936,12 @@ Block对象常见的循环引用问题如下：</p>
 </pre></td><td class='code'><pre><code class=''><span class='line'>- (void)setQueuePriority:(NSOperationQueuePriority)priority;</span></code></pre></td></tr></table></div></figure>
 
 
+<p>如果要设置Queue的并发操作数：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)setMaxConcurrentOperationCount:(NSInteger)cnt;</span></code></pre></td></tr></table></div></figure>
+
+
 <p>iOS4之后还可以往NSOperation上添加一个结束block，用于在工作执行结束之后的操作：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -964,6 +984,8 @@ Block对象常见的循环引用问题如下：</p>
 </pre></td><td class='code'><pre><code class=''><span class='line'>+ (id)mainQueue</span></code></pre></td></tr></table></div></figure>
 
 
+<p>还有些接口参考头文件NSOperation.h和<a href="http://developer.apple.com/library/mac/#documentation/Cocoa/Reference/NSOperation_class/Reference/Reference.html">NSOperation Class Reference</a>，Apple的Class Reference文档描述还是很清晰的。</p>
+
 <h3>NSInvocationOperation &amp; NSBlockOperation</h3>
 
 <p>其实除非必要，简单的工作完全可以使用官方提供的NSOperation两个子类NSInvocationOperation和NSBlockOperation来实现。</p>
@@ -976,8 +998,8 @@ Block对象常见的循环引用问题如下：</p>
 <span class='line-number'>4</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>NSInvocationOperation* theOp = [[NSInvocationOperation alloc] 
 </span><span class='line'>                       initWithTarget:self                 
-</span><span class='line'>                        selector:@selector(myTaskMethod:)                                           
-</span><span class='line'>                            object:data];</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>                           selector:@selector(myTaskMethod:)                                           
+</span><span class='line'>                               object:data];</span></code></pre></td></tr></table></div></figure>
 
 
 <p>NSBlockOperation:</p>
