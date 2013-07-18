@@ -95,6 +95,19 @@ Run Loop是个让人迷惑的概念，相关的介绍资料也很少，它的主
 * Run Loop的处理两大类事件源：Timer Source和Input Source(包括performSelector***方法簇、Port或者自定义Input Source)，每个事件源都会绑定在Run Loop的某个特定模式mode上，而且只有RunLoop在这个模式运行的时候才会触发该Timer和Input Source。
 * 如果没有任何事件源添加到Run Loop上，Run Loop就会立刻exit。
 
+###Run Loop接口
+要操作Run Loop，肯定需要接口，在Foundation层和Core Foundation层都有对应的接口可以操作Run Loop。
+
+Foundation层对应的是NSRunLoop:
+
+{% img /images/post/NSRunLoop.jpg %}
+
+Core Foundation层对应的是CFRunLoopRef：
+
+{% img /images/post/CFRunLoopRef.jpg %}
+
+两组接口差不多，不过功能上还是有许多区别的，例如CF层可以添加自定义Input Source事件源(CFRunLoopSourceRef)和Run Loop观察者Observer(CFRunLoopObserverRef)。
+
 Run Loop如何运行呢？在上一节NSThread的入口函数中已经说明了一种NSRunLoop的使用场景，再看一例：
 
 ```

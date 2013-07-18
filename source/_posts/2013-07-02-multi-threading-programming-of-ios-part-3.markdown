@@ -6,11 +6,10 @@ comments: true
 categories: iOS
 ---
 
-前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。
+前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是基于Objective-C的Block特性开发的，基本业务逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation子类使用起来更方便，大大降低了多线程开发的门槛。另外，GCD是开源的喔：[libdispatch](http://libdispatch.macosforge.org/)
 
-
-###前言
-GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比自定义NSOperation更加方便，大大降低了多线程开发的门槛。示例：
+###基本用法
+首先示例：
 
 ```
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -18,8 +17,12 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     NSLog(@"Fisinished");
 });
 ```
+GCD的调用接口非常简单，就是将Job提交至Queue中，主要的提交Job接口为：
 
-另外，GCD是开源的喔：[libdispatch](http://libdispatch.macosforge.org/)
+* dispatch_sync(queue, block)同步提交job* dispatch_async (queue, block) 异步提交job* dispatch_after(time, queue, block) 延迟提交job
+其中第一个参数类型是dispatch_queue_t，
+
+
 
 ###Dispatch Queue
 要添加工作到队列Dispatch Queue中，这个队列可以是串行或者并行的，并行队列会尽可能的并发执行其中的工作任务，而串行队列每次只能运行一个工作任务。
@@ -185,6 +188,12 @@ dispatch source创建后是出于suspend状态的，必须使用dispatch_resume�
 * 信号量Semaphore
 
 和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create用于创建，dispatch_semaphore_signal用于通知，dispatch_semaphore_wait用于等待。
+
+###总结
+
+GCD的API按功能分为：
+
+* 创建管理Queue* 提交Job* Dispatch Group* 管理Dispatch Object* 信号量Semaphore* 队列屏障Barrier* Dispatch Source* Queue Context数据* Dispatch I/O Channel* Dispatch Data 对象
 
 
 ###参考资料
