@@ -53,7 +53,6 @@ NSThread* aThread = [[NSThread alloc] initWithTarget:self selector:@selector(thr
 
 
 ```
-
 - (void)threadRoutine
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init]; 
@@ -88,7 +87,7 @@ NSThread* aThread = [[NSThread alloc] initWithTarget:self selector:@selector(thr
 * 如果需要在子线程运行的时候让子线程结束操作，子线程每次Run Loop迭代中检查相应的标志位来判断是否还需要继续执行，可以使用threadDictionary以及设置Input Source的方式来通知这个子线程。那么什么是Run Loop呢？这是涉及NSThread及线程相关的编程时无法回避的一个问题。
 
 ###Run Loop
-Run Loop是个让人迷惑的概念，相关的介绍资料也很少，它的主要的特性如下：
+Run Loop本身并不具备并发执行的功能，但是和多线程开发息息相关，而且概念令人迷惑，相关的介绍资料也很少，它的主要的特性如下：
 
 * 每个线程都有一个Run Loop，主线程的Run Loop会在App运行时自动运行，子线程中需要手动运行。
 * 每个Run Loop都会以一个模式mode来运行，可以使用NSRunLoop的`- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate` 方法运行在某个特定模式mode。
@@ -96,7 +95,7 @@ Run Loop是个让人迷惑的概念，相关的介绍资料也很少，它的主
 * 如果没有任何事件源添加到Run Loop上，Run Loop就会立刻exit。
 
 ###Run Loop接口
-要操作Run Loop，肯定需要接口，在Foundation层和Core Foundation层都有对应的接口可以操作Run Loop。
+要操作Run Loop，Foundation层和Core Foundation层都有对应的接口可以操作Run Loop。
 
 Foundation层对应的是NSRunLoop:
 
@@ -106,9 +105,11 @@ Core Foundation层对应的是CFRunLoopRef：
 
 {% img /images/post/CFRunLoopRef.jpg %}
 
-两组接口差不多，不过功能上还是有许多区别的，例如CF层可以添加自定义Input Source事件源(CFRunLoopSourceRef)和Run Loop观察者Observer(CFRunLoopObserverRef)。
+两组接口差不多，不过功能上还是有许多区别的，例如CF层可以添加自定义Input Source事件源(CFRunLoopSourceRef)和Run Loop观察者Observer(CFRunLoopObserverRef)，很多类似功能的接口特性也是不一样的。
 
-Run Loop如何运行呢？在上一节NSThread的入口函数中已经说明了一种NSRunLoop的使用场景，再看一例：
+###Run Loop运行
+
+Run Loop如何运行呢？在上一节NSThread的入口函数中使用了一种NSRunLoop的使用场景，再看一例：
 
 ```
 - (void)main
@@ -138,62 +139,32 @@ Run Loop如何运行呢？在上一节NSThread的入口函数中已经说明了�
 }
 ```
 
-我们看到入口方法里创建了一个NSTimer，并且以NSDefaultRunLoopMode模式加入到当前子线程的NSRunLoop中，正常情况肯定会执行`-doOtherTask`方式法一次，然后再以NSDefaultRunLoopMode模式运行NSRunLoop，如果一次Timer事件触发处理后，这个Run Loop会返回吗？答案是不会。NSRunLoop的底层实现是CFRunLoop，具体内部实现不透明，你可以想象成一个循环，当没有事件触发时，你调用Run Loop的运行方法不会返回继续监听其他事件源，Run Loop会让子线程进入sleep等待状态而不是空转，只有当Timer Source或者Input Source事件发生时，子线程才会被唤醒，处理触发的事件，不过由于Timer source比较特殊，Timer Source事件发生处理后，`- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;`方法不会返回；而其他非Timer事件的触发处理会让这个Run Loop退出并返回YES。
+我们看到入口方法里创建了一个NSTimer，并且以NSDefaultRunLoopMode模式加入到当前子线程的NSRunLoop中。进入循环后肯定会执行`-doOtherTask`方式法一次，然后再以NSDefaultRunLoopMode模式运行NSRunLoop，如果一次Timer事件触发处理后，这个Run Loop会返回吗？答案是不会，Why？
 
-当你将子线程的Run Loop运行在一个特定模式时，如果该模式下没有事件源，运行Run Loop也会立刻返回NO。如果你添加一个Input Source，例如`[[NSRunLoop currentRunLoop] addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];`或者持有子线程的对象在这个子线程上运行方法，例如`[self performSelector:@selector(doThreadTask) onThread:thread withObject:nil waitUntilDone:NO];`就会让这个Run Loop进入等待状态，即`-runMode:BeforDate`处于阻塞状态不返回。
+NSRunLoop的底层实现是CFRunLoop，你可以想象成一个循环或者类似Linux下select或者epoll，当没有事件触发时，你调用的Run Loop运行方法不会返回，它会持续监听其他事件源，如果需要Run Loop会让子线程进入sleep等待状态而不是空转，只有当Timer Source或者Input Source事件发生时，子线程才会被唤醒，然后处理触发的事件，然而由于Timer source比较特殊，Timer Source事件发生处理后，Run Loop运行方法`- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;`也不会返回；而其他非Timer事件的触发处理会让这个Run Loop退出并返回YES。当Run Loop运行在一个特定模式时，如果该模式下没有事件源，运行Run Loop会立刻返回NO。
 
-
-###Run Loop的事件源
-归根结底，Run Loop就是个处理事件的Loop，可以让你添加Timer和其他Input Source等各种事件源，如果事件源没有发生时，Run Loop就会让线程进入asleep状态，而事件源发生时就会唤醒休眠的(asleep)的子线程来处理事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。
-
-{% img /images/post/runloop_source.jpg %}
-
-从上图可以看出Run Loop就是处理事件的一个循环，不同的是Timer Source事件处理后不会使Run Loop结束，而Input Source事件处理后会让Run Loop退出。因此你需要自己的一个Loop去不断运行Run Loop来处理事件，就像本文开头的示例那样。
-
-细分下Run Loop的事件源：
-
-1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是`scheduledTimerWith****`开头生成的Timer会自动帮你加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用`-addTimer:forMode`添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。
-
-2) Input Source中的-performSelector:***API调用簇方法，有以下这些接口：
+NSRunLoop的运行接口：
 
 ```
-performSelectorOnMainThread:withObject:waitUntilDone:
-performSelectorOnMainThread:withObject:waitUntilDone:modes:
+//运行 NSRunLoop，运行模式为默认的NSDefaultRunLoopMode模式，没有超时限制
+- (void)run;
 
-performSelector:onThread:withObject:waitUntilDone:
-performSelector:onThread:withObject:waitUntilDone:modes:
-
-performSelector:withObject:afterDelay:
-performSelector:withObject:afterDelay:inModes:
-
-cancelPreviousPerformRequestsWithTarget:
-cancelPreviousPerformRequestsWithTarget:selector:object:
-
+//运行 NSRunLoop: 参数为运行模式、时间期限，返回值为YES表示是处理事件后返回的，NO表示是超时或者停止运行导致返回的- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;
+//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式 (void)runUntilDate:(NSDate *)limitDate;
 ```
 
-这些API最后两个是取消当前线程中调用，其他API是在主线程或者当前线程下的Run Loop中执行指定的@selector。
+CFRunLoopRef的运行接口：
 
-3) Port Input Source：概念上也比较简单，可以用NSMachPort作为线程之间的通讯通道。例如在主线程创建子线程时传入一个NSPort对象，这样主线程就可以和这个子线程通讯啦，如果要实现双向通讯，那么子线程也需要回传给主线程一个NSPort。
+```
+//运行 CFRunLoopRef
+void CFRunLoopRun(); 
 
-NSPort的子类除了NSMachPort，还可以使用NSMessagePort或者Core Foundation中的CFMessagePortRef。
+//运行 CFRunLoopRef: 参数为运行模式、时间和是否在处理Input Source后退出标志，返回值是exit原因SInt32 CFRunLoopRunInMode (mode, seconds, returnAfterSourceHandled); 
+//停止运行 CFRunLoopRefvoid CFRunLoopStop( CFRunLoopRef rl ); 
+//唤醒 CFRunLoopRefvoid CFRunLoopWakeUp ( CFRunLoopRef rl ); 
+```
 
-#### 注意：虽然有这么棒的方式实现线程间通讯方式，但是估计是由于危及iOS的Sandbox沙盒环境，所以这些API都是私有接口，如果你用到NSPortMessage，XCode会提示`'NSPortMessage' for instance message is a forward declaration`。
-
-4) 自定义Input Source：
-
-向Run Loop添加自定义Input Source只能使用Core Foundation的接口：`CFRunLoopSourceCreate`创建一个source，`CFRunLoopAddSource`向Run Loop中添加source，`CFRunLoopRemoveSource`从Run Loop中删除source，`CFRunLoopSourceSignal`通知source，`CFRunLoopWakeUp`唤醒Run Loop。
-
-Apple官方文档提供了一个自定义Input Source使用模式。
-
-{% img /images/post/input_source.jpg %}
-
-主线程持有包含子线程的Run Loop和Source的context对象，还有一个用于保存需要运行操作的数据buffer。主线程需要子线程干活时，首先将需要的操作数据添加到数据buffer，然后通知source，唤醒子线程Run Loop（因为子线程可能正在sleep状态，`CFRunLoopWakeUp`唤醒Run Loop可以通知线程醒来干活），由于子线程也持有这个source和数据buffer，因此在触发唤醒时可以使用这个数据buffer的数据来执行相关操作（需要注意数据buffer访问时的同步）。
-
-具体实现参见本文最后的Sample Code。
-
-
-###Run Loop的运行
-之前说的Run Loop的运行方式感觉有点绕，容易晕，而且《Threading Programming Guide》可能是最初Mac下的Run Loop，iOS下情况有一些不一样。在此总结NSRunLoop的三个运行接口：
+在此总结NSRunLoop的三个运行接口：
 
 * `- (void)run; ` 无条件运行
 
@@ -264,6 +235,7 @@ enum {
 以上Run Loop运行方法参考本文最后的Sample Code自行尝试。
 
 ###Run Loop的运行模式Mode
+
 iOS下Run Loop的主要运行模式mode有：
 
 1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。
@@ -276,8 +248,65 @@ This is a configurable group of commonly used modes. Associating an input source
 
 4) 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。
 
+CF层下使用的模式有：
+
+1) kCFRunLoopDefaultMode: CF层的NSDefaultRunLoopMode
+2) kCFRunLoopCommonModes: CF层的NSRunLoopCommonModes，同样可以利用CFRunLoopAddCommonMode添加自定义的模式。
+3) 自定义Mode: 一样可以自定义，不过是CFStringRef类型而已。
+
+Run Loop运行时只能以一种固定的模式运行，只会监控这个模式下的Timer Source和Input Source，如果这个模式下没有相应的事件源，Run Loop的运行也会立刻返回的。注意Run Loop不能在运行在NSRunLoopCommonModes模式，因为NSRunLoopCommonModes其实是个模式集合，而不是一个具体的模式，我可以在添加事件源的时候使用NSRunLoopCommonModes，只要Run Loop运行在NSRunLoopCommonModes中任何一个模式，这个事件源都可以被触发。
+
+###Run Loop的事件源
+归根结底，Run Loop就是个处理事件的Loop，可以添加Timer和其他Input Source等各种事件源，如果事件源没有发生时，Run Loop就可能让线程进入asleep状态，而事件源发生时就会唤醒休眠的(asleep)的子线程来处理事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。
+
+{% img /images/post/runloop_source.jpg %}
+
+从上图可以看出Run Loop就是处理事件的一个循环，不同的是Timer Source事件处理后不会使Run Loop结束，而Input Source事件处理后会让Run Loop退出。因此你需要自己的一个Loop去不断运行Run Loop来处理事件，就像本文开头的示例那样。
+
+细分下Run Loop的事件源：
+
+1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是`scheduledTimerWith****`开头生成的Timer会自动帮你以默认NSDefaultRunLoopMode模式加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用`-addTimer:forMode`添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。
+
+2) Input Source中的-performSelector:***API调用簇方法，有以下这些接口：
+
+```
+performSelectorOnMainThread:withObject:waitUntilDone:
+performSelectorOnMainThread:withObject:waitUntilDone:modes:
+
+performSelector:onThread:withObject:waitUntilDone:
+performSelector:onThread:withObject:waitUntilDone:modes:
+
+performSelector:withObject:afterDelay:
+performSelector:withObject:afterDelay:inModes:
+
+cancelPreviousPerformRequestsWithTarget:
+cancelPreviousPerformRequestsWithTarget:selector:object:
+
+```
+
+这些API最后两个是取消当前线程中调用，其他API是在主线程或者当前线程下的Run Loop中执行指定的@selector。
+
+3) Port Input Source：概念上也比较简单，可以用NSMachPort作为线程之间的通讯通道。例如在主线程创建子线程时传入一个NSPort对象，这样主线程就可以和这个子线程通讯啦，如果要实现双向通讯，那么子线程也需要回传给主线程一个NSPort。
+
+NSPort的子类除了NSMachPort，还可以使用NSMessagePort或者Core Foundation中的CFMessagePortRef。
+
+#### 注意：虽然有这么棒的方式实现线程间通讯方式，但是估计是由于危及iOS的Sandbox沙盒环境，所以这些API都是私有接口，如果你用到NSPortMessage，XCode会提示`'NSPortMessage' for instance message is a forward declaration`。
+
+4) 自定义Input Source：
+
+向Run Loop添加自定义Input Source只能使用Core Foundation的接口：`CFRunLoopSourceCreate`创建一个source，`CFRunLoopAddSource`向Run Loop中添加source，`CFRunLoopRemoveSource`从Run Loop中删除source，`CFRunLoopSourceSignal`通知source，`CFRunLoopWakeUp`唤醒Run Loop。
+
+Apple官方文档提供了一个自定义Input Source使用模式。
+
+{% img /images/post/input_source.jpg %}
+
+主线程持有包含子线程的Run Loop和Source的context对象，还有一个用于保存需要运行操作的数据buffer。主线程需要子线程干活时，首先将需要的操作数据添加到数据buffer，然后通知source，唤醒子线程Run Loop（因为子线程可能正在sleep状态，`CFRunLoopWakeUp`唤醒Run Loop可以通知线程醒来干活），由于子线程也持有这个source和数据buffer，因此在触发唤醒时可以使用这个数据buffer的数据来执行相关操作（需要注意数据buffer访问时的同步）。
+
+具体实现参见本文最后的Sample Code。
+
+
 ###Run Loop的Observer
-可以定义一个Run Loop的观察者在Run Loop进入以下某个状态时得到通知：
+Core Foundation层的接口可以定义一个Run Loop的观察者在Run Loop进入以下某个状态时得到通知：
 
 * Run loop的进入
 * Run loop处理一个Timer的时刻
