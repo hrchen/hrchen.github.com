@@ -6,7 +6,7 @@ comments: true
 categories: iOS
 ---
 ###前言
-多线程的价值无需赘述，对于App性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种技术的细节。
+多线程的价值无需赘述，对于App性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种多线程技术的细节。
 
 对于pthread这种跨平台的多线程技术，这本[Programming with POSIX Threads](http://www.amazon.com/Programming-POSIX-Threads-David-Butenhof/dp/0201633922/)做了详细介绍，不再提及。
 
@@ -141,7 +141,7 @@ Run Loop如何运行呢？在上一节NSThread的入口函数中使用了一种N
 
 我们看到入口方法里创建了一个NSTimer，并且以NSDefaultRunLoopMode模式加入到当前子线程的NSRunLoop中。进入循环后肯定会执行`-doOtherTask`方式法一次，然后再以NSDefaultRunLoopMode模式运行NSRunLoop，如果一次Timer事件触发处理后，这个Run Loop会返回吗？答案是不会，Why？
 
-NSRunLoop的底层实现是CFRunLoop，你可以想象成一个循环或者类似Linux下select或者epoll，当没有事件触发时，你调用的Run Loop运行方法不会返回，它会持续监听其他事件源，如果需要Run Loop会让子线程进入sleep等待状态而不是空转，只有当Timer Source或者Input Source事件发生时，子线程才会被唤醒，然后处理触发的事件，然而由于Timer source比较特殊，Timer Source事件发生处理后，Run Loop运行方法`- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;`也不会返回；而其他非Timer事件的触发处理会让这个Run Loop退出并返回YES。当Run Loop运行在一个特定模式时，如果该模式下没有事件源，运行Run Loop会立刻返回NO。
+NSRunLoop的底层是由CFRunLoopRef实现的，你可以想象成一个循环或者类似Linux下select或者epoll，当没有事件触发时，你调用的Run Loop运行方法不会立刻返回，它会持续监听其他事件源，如果需要Run Loop会让子线程进入sleep等待状态而不是空转，只有当Timer Source或者Input Source事件发生时，子线程才会被唤醒，然后处理触发的事件，然而由于Timer source比较特殊，Timer Source事件发生处理后，Run Loop运行方法`- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;`也不会返回；而其他非Timer事件的触发处理会让这个Run Loop退出并返回YES。当Run Loop运行在一个特定模式时，如果该模式下没有事件源，运行Run Loop会立刻返回NO。
 
 NSRunLoop的运行接口：
 
@@ -164,20 +164,21 @@ void CFRunLoopRun();
 //唤醒 CFRunLoopRefvoid CFRunLoopWakeUp ( CFRunLoopRef rl ); 
 ```
 
-在此总结NSRunLoop的三个运行接口：
+详细讲解下NSRunLoop的三个运行接口：
 
 * `- (void)run; ` 无条件运行
 
-不建议使用，因为这个接口会导致Run Loop永久性的运行在NSDefaultRunLoopMode模式，即使使用`CFRunLoopStop(CFRunLoopGetCurrent());`也无法停止Run Loop的运行，那么这个子线程就无法停止，只能永久运行下去。
+不建议使用，因为这个接口会导致Run Loop永久性的运行在NSDefaultRunLoopMode模式，即使使用`CFRunLoopStop(runloopRef);`也无法停止Run Loop的运行，那么这个子线程就无法停止，只能永久运行下去。
 
 * `- (void)runUntilDate:(NSDate *)limitDate;` 有一个超时时间限制
 
-比上面的接口好点，有个超时时间，可以控制每次Run Loop的运行时间，也是运行在NSDefaultRunLoopMode模式。这个方法运行Run Loop一段时间会退出给你检查运行条件的机会，如果需要可以再次运行Run Loop。注意`CFRunLoopStop(CFRunLoopGetCurrent());`也无法停止Run Loop的运行，因此最好自己设置一个合理的Run Loop运行时间。示例：
+比上面的接口好点，有个超时时间，可以控制每次Run Loop的运行时间，也是运行在NSDefaultRunLoopMode模式。这个方法运行Run Loop一段时间会退出给你检查运行条件的机会，如果需要可以再次运行Run Loop。注意`CFRunLoopStop(runloopRef);`也无法停止Run Loop的运行，因此最好自己设置一个合理的Run Loop运行时间。示例：
 
 ```
 while (!Done)
 {
-    [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:10]];
+    [[NSRunLoop currentRunLoop] runUntilDate:[NSDate       
+                dateWithTimeIntervalSinceNow:10]];
     NSLog(@"exiting runloop.........:");
 }
 ```
@@ -190,12 +191,12 @@ while (!Done)
 while (!Done)
 {
     BOOL ret = [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
-                                      beforeDate:[NSDate distantFuture]];
+                                        beforeDate:[NSDate distantFuture]];
     NSLog(@"exiting runloop.........: %d", ret);
 }
 ```
 
-那么如何知道一个Run Loop是因为什么原因exit返回的呢？NSRunLoop没有接口可以知道，而需要通过Core Foundation的接口来运行CFRunLoopRef，NSRunLoop其实就是CFRunLoopRef的二次封装。使用CFRunLoop的接口(C的接口)来运行Run Loop，有两个接口：
+那么如何知道一个Run Loop是因为什么原因exit退出的呢？NSRunLoop中没有接口可以知道，而需要通过Core Foundation的接口来运行CFRunLoopRef，NSRunLoop其实就是CFRunLoopRef的二次封装。使用CFRunLoop的接口(C的接口)来运行Run Loop，有两个接口：
 
 * `void CFRunLoopRun(void);` 
 
@@ -219,7 +220,7 @@ while (!self.isCancelled)
 }
 ```
 
-如果Run Loop退出返回后，返回值是SInt32类型，就是个signed long，表明Run Loop返回的原因，目前有四种：
+如果Run Loop退出返回后，返回值是SInt32类型(signed long)，表明Run Loop返回的原因，目前有四种：
 
 ```
 enum {
@@ -230,7 +231,7 @@ enum {
 };
 ```
 
-注意：Run Loop是可以递归调用的，例如一个Run Loop运行过程中一个事件触发后，那么在触发方法里可以再运行当前子线程的Run Loop，然后由这个Run Loop等待其他事件触发。不过这种Run Loop调用方式我用的比较少。
+注意：Run Loop是可以嵌套调用的(就像NSAutoreleasePool)，例如一个Run Loop运行过程中一个事件触发后，那么在触发方法里可以再运行当前子线程的Run Loop，然后由这个Run Loop等待其他事件触发。不过这种嵌套Run Loop调用方式我用的比较少。
 
 以上Run Loop运行方法参考本文最后的Sample Code自行尝试。
 
@@ -240,21 +241,19 @@ iOS下Run Loop的主要运行模式mode有：
 
 1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。
 
-This is a configurable group of commonly used modes. Associating an input source with this mode also associates it with each of the modes in the group. 
-
 2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。例如在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用`CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)`将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。默认情况下NSRunLoopCommonModes包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。注意：让Run Loop运行在NSRunLoopCommonModes下是没有意义的，因为一个时刻Run Loop只能运行在一个特定模式下，而不可能是个模式集合。
 
 3) UITrackingRunLoopMode: 用于跟踪触摸事件触发的模式（例如UIScrollView上下滚动），主线程当触摸事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。
 
 4) 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。
 
-CF层下使用的模式有：
+CF层下的主要模式有：
 
 1) kCFRunLoopDefaultMode: CF层的NSDefaultRunLoopMode
 2) kCFRunLoopCommonModes: CF层的NSRunLoopCommonModes，同样可以利用CFRunLoopAddCommonMode添加自定义的模式。
 3) 自定义Mode: 一样可以自定义，不过是CFStringRef类型而已。
-
-Run Loop运行时只能以一种固定的模式运行，只会监控这个模式下的Timer Source和Input Source，如果这个模式下没有相应的事件源，Run Loop的运行也会立刻返回的。注意Run Loop不能在运行在NSRunLoopCommonModes模式，因为NSRunLoopCommonModes其实是个模式集合，而不是一个具体的模式，我可以在添加事件源的时候使用NSRunLoopCommonModes，只要Run Loop运行在NSRunLoopCommonModes中任何一个模式，这个事件源都可以被触发。
+
+Run Loop运行时只能以一种固定的模式运行，只会监控这个模式下添加的Timer Source和Input Source，如果这个模式下没有相应的事件源，Run Loop的运行也会立刻返回的。注意Run Loop不能在运行在NSRunLoopCommonModes模式，因为NSRunLoopCommonModes其实是个模式集合，而不是一个具体的模式，我可以在添加事件源的时候使用NSRunLoopCommonModes，只要Run Loop运行在NSRunLoopCommonModes中任何一个模式，这个事件源都可以被触发。
 
 ###Run Loop的事件源
 归根结底，Run Loop就是个处理事件的Loop，可以添加Timer和其他Input Source等各种事件源，如果事件源没有发生时，Run Loop就可能让线程进入asleep状态，而事件源发生时就会唤醒休眠的(asleep)的子线程来处理事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。
@@ -339,7 +338,6 @@ typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
     kCFRunLoopExit = (1UL << 7),
     kCFRunLoopAllActivities = 0x0FFFFFFFU
 };
-
 ```
 
 对应Run Loop的各种事件，kCFRunLoopAllActivities比较特殊，可以观察所有事件。具体样例代码请参考Sample Code。

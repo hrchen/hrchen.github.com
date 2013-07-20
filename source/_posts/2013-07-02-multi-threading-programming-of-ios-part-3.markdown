@@ -167,7 +167,16 @@ dispatch_source_t是Dispatch Source的数据结构，使用dispatch_source_creat
 
 dispatch_source_set_event_handler(source, handler)接口可以添加source的处理方法handler，这里的handler是一个block。如果是dispatch_source_set_event_handler_f(source, handler)，这里的handler就是function。
 
-举个自定义源的例子，假如我们在处理上面那个数组时要在UI中显示一个进度条：
+dispatch_source_cancel(source)接口可以异步取消一个source，取消后上面设置dispatch_source_set_event_handler的evnet handler就不会再执行。取消一个source时，如果之前使用dispatch_source_set_cancel_handler(source, handler)设置了一个取消时的处理block，那么这个block就会在取消source的时候提交至source关联的queue中去执行，可以用来清理资源。
+
+dispatch_source_get_data(source)接口用于返回source需要处理的数据，根据当初创建source类型不同有不同的含义，而且这个接口必须在event handler中调用，否则返回结果可能未定义。
+
+dispatch_source_get_handle(source)和dispatch_source_get_mask(source)接口分布用于获取当初创建source时的两个参数handle和mask。
+
+dispatch_source_merge_data(source, value)接口用于将一个value值合并到souce中，这个source的类型必须是DISPATCH_SOURCE_TYPE_DATA_ADD或者DISPATCH_SOURCE_TYPE_DATA_OR。
+
+下面举个source的例子，使用dispatch_source_get_data和dispatch_source_merge_data，假如我们在处理上面那个数组时要在UI中显示一个进度条：
+
 
 ```
 dispatch_source_t source = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_main_queue());
@@ -182,7 +191,8 @@ dispatch_apply([array count], globalQueue, ^(size_t index) {
     dispatch_source_merge_data(source, 1);
 });
 ```
-dispatch source创建后是出于suspend状态的，必须使用dispatch_resume来恢复，dispatch_apply中每处理一个数组元素会调用dispatch_source_merge_data加1，那么这个source的事件handler就可以通过dispatch_source_get_data拿到source的数据。
+
+注意dispatch source创建后是处于suspend状态的，必须使用dispatch_resume来恢复，dispatch_apply中每处理一个数组元素会调用dispatch_source_merge_data加1，那么这个source的事件handler就可以通过dispatch_source_get_data拿到source的数据。
 
 ###Dispatch Once
 
@@ -220,23 +230,123 @@ dispatch_once的意思是在App整个生命周期内运行并且只允许一次�
 
 ###Dispatch Semaphore
 
-和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create用于创建，dispatch_semaphore_signal用于通知，dispatch_semaphore_wait用于等待。
+和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create(value)用于创建一个信号量类型dispatch_semaphore_t，参数是long类型，表示信号量的初始值；dispatch_semaphore_signal(semaphore)用于通知信号量(增加一个信号量)；dispatch_semaphore_wait(semaphore, timeout)用于等待信号量(减少一个信号量)，第二个参数是超时时间，如果返回值小于0，会按照先后顺序等待其他信号量的通知。
 
 
-###队列Context数据
+###管理GCD数据
 
-###Dispatch I/O Channel
+所有GCD的对象同样是有引用计数的，如果引用计数为0就被释放，如果你不再需要所创建的GCD对象，就可以使用dispatch_release(object)将对象的引用计数减一；同样可以使用dispatch_retain(object)将对象的引用计数加一。注意由于全局和主线程队列对象都不需要去dispatch_release和dispatch_retain，即使调用了也没有作用。
+
+dispatch_suspend(queue)可以暂停一个GCD队列的执行，当然由于是block粒度的，如果调用dispatch_suspend时正好有队列中block正在执行，那么这些运行的block结束后不会有其他的block再被执行；同理dispatch_resume(queue)可以恢复一个GCD队列的运行。注意dispatch_suspend的调用数目需要和dispatch_resume数目保持平衡，因为dispatch_suspend是计数的，两次调用dispatch_suspend会设置队列的暂停数为2，必须再调用两次dispatch_resume才能让队列重新开始执行block。
+
+可以使用dispatch_set_context(object, context)给一个GCD对象设置一个关联的数据，第二个参数任何一个内存地址；dispatch_set_context(object)就是获得这个关联数据，这样可以方便传递各类上下文数据。
+
+本小节提到的GCD对象不单指队列dispatch_queue_t，是指在GCD中出现的各种类型，声明类型dispatch_object_t是个union：
+
+```
+typedef union {
+   struct dispatch_object_s *_do;
+   struct dispatch_continuation_s *_dc;
+   struct dispatch_queue_s *_dq;
+   struct dispatch_queue_attr_s *_dqa;
+   struct dispatch_group_s *_dg;
+   struct dispatch_source_s *_ds;
+   struct dispatch_source_attr_s *_dsa;
+   struct dispatch_semaphore_s *_dsema;
+   struct dispatch_data_s *_ddata;
+   struct dispatch_io_s *_dchannel;
+   struct dispatch_operation_s *_doperation;
+   struct dispatch_fld_s *_dfld;
+} dispatch_object_t 
+```
 
 ###Dispatch Data 对象
 
+GCD是基于C的接口，其内部处理数据是无法直接使用Objective-C的数据类型，如果要使用数据buffer时需要自己malloc一块内存空间来用，因此GCD提供了类似Objective-C中NSData的dispatch_data_t数据结构作为数据buffer。
 
-###GCD的坑
+dispatch_data_t的类型dispatch_data_s的指针，使用dispatch_data_create(buffer, size, queue, destructor)可以创建一个dispatch_data_t，第一个参数是保存数据的内存地址，第二个参数size是数据字节大小，第三个参数queue提交destructor block的队列，第四个参数destructor是用于释放data的block，默认是DISPATCH_DATA_DESTRUCTOR_DEFAULT和DISPATCH_DATA_DESTRUCTOR_FREE，后者在buffer是使用malloc生成的缓冲区时使用。示例：
 
-GCD的常规使用方法很简单，但是同样有很多坑需要绕开：
+```
+void *buffer = malloc(length);
+dispatch_data_t data = dispatch_data_create(buffer, length, NULL, DISPATCH_DATA_DESTRUCTOR_FREE);
+```
 
-* 死锁
-* 优先级问题
+如果是从NSData转换为dispatch_data_t：
 
+```
+nsdata = [nsdata copy];
+dispatch_queue_t queue = dispatch_get_global_queue(0, 0);
+	return dispatch_data_create([nsdata bytes], [nsdata length], queue, ^{
+	    [nsdata release];
+	});
+```
+
+与直接使用己malloc分配的连续内存空间不同，dispatch_data_t可以直接将两块数据用dispatch_data_create_concat(dataA, dataB)拼接起来，还可以用dispatch_data_create_subrange(data, offset, length)获取部分dispatch_data_t。
+
+如果反过来要访问一个dispatch_data_t对应的内存空间，就需要使用dispatch_data_create_map(data, buffer_ptr, size_ptr)接口，示例：
+
+```
+const void *buffer;
+size_t length;
+dispatch_data_t tmpData = dispatch_data_create_map(data, &buffer, &length);
+
+//可以得到dispatch_data_t的内存空间地址和字节大小
+//这里我们可以直接使用buffer指针对应的内存
+//返回的tmpData是一个新的对应data连续内存空间的dispatch_data_t
+
+dispatch_release(tmpData);
+```
+   
+
+###Dispatch I/O Channel
+
+GCD提供的这组Dispatch I/O Channel接口用于异步处理基于文件和网络描述符的操作，可以用于文件和网络I/O操作。
+
+Dispatch IO Channel对象dispatch_io_t就是对一个文件或网络描述符的封装，使用dispatch_io_t dispatch_io_create(type, fd, queue, cleanup_hander)接口生成一个dispatch_io_t对象。第一个参数type表示channel的类型，有DISPATCH_IO_STREAM和DISPATCH_IO_RANDOM两种，分布表示流读写和随机读写；第二个参数fd是要操作的文件描述符；第三个参数queue是cleanup_hander提交需要的队列；第四个参数cleanup_hander是在系统释放该文件描述符时的回调。示例：
+
+```
+dispatch_io_t fileChannel = dispatch_io_create(DISPATCH_IO_STREAM, STDIN_FILENO, dispatch_get_global_queue(0, 0), ^(int error) {
+        if(error)
+            fprintf(stderr, "error from stdin: %d (%s)\n", error, strerror(error));
+    });
+    
+```
+dispatch_io_close(channel, flag)可以将生成的channel关闭，第二个参数是关闭的选项，如果使用DISPATCH_IO_STOP (0x01)就会立刻中断当前channel的读写操作，关闭channel。如果使用的是0，那么会在正常读写结束后才会关闭channel。
+
+During a read or write operation, the channel uses the high- and low-water mark values to determine how often to enqueue the associated handler block. It enqueues the block when the number of bytes read or written is between these two values.
+
+在channel的读写操作中，channel会使用low_water和high_water值来决定读写了多大数据才会提交相应的数据处理block，可以dispatch_io_set_low_water(channel, low_water)和dispatch_io_set_high_water(channel, high_water)设置这两个值。
+
+Channel的异步读写操作使用接口dispatch_io_read(channel, offset, length, queue, io_handler)和dispatch_io_write(channel, offset, data, queue, io_handler)。dispatch_io_read接口参数分布表示channel，偏移量，字节大小，提交IO处理block的队列，IO处理block；dispatch_io_write接口参数分别表示channel，偏移量，数据(dispatch_data_t)，提交IO处理block的队列，IO处理block。其中io_handler的定义为`^(bool done, dispatch_data_t data, int error)()`。
+
+举个例子，将STDIN读到的数据写到STDERR：
+
+```
+dispatch_io_read(stdinChannel, 0, SIZE_MAX, dispatch_get_global_queue(0, 0), ^(bool done, dispatch_data_t data, int error) {
+       if(data)
+       {
+           dispatch_io_write(stderrChannel, 0, data, dispatch_get_global_queue(0, 0), ^(bool done, dispatch_data_t data, int error) {});
+       }
+});
+
+```
+
+看起来使用上还挺麻烦的，需要创建Channel才能进行读写，因此GCD直接提供了两个方便异步读写文件描述符的接口(参数含义和channel IO的类似)：
+
+```
+void dispatch_read(
+   dispatch_fd_t fd,
+   size_t length,
+   dispatch_queue_t queue,
+   void (^handler)(dispatch_data_t data, int error));
+   
+void dispatch_write(
+   dispatch_fd_t fd,
+   dispatch_data_t data,
+   dispatch_queue_t queue,
+   void (^handler)(dispatch_data_t data, int error));
+   
+```
 
 ###总结
 
