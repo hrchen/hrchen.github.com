@@ -150,7 +150,7 @@ NSRunLoop的运行接口：
 - (void)run;
 
 //运行 NSRunLoop: 参数为运行模式、时间期限，返回值为YES表示是处理事件后返回的，NO表示是超时或者停止运行导致返回的- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;
-//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式 (void)runUntilDate:(NSDate *)limitDate;
+//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式 -(void)runUntilDate:(NSDate *)limitDate;
 ```
 
 CFRunLoopRef的运行接口：

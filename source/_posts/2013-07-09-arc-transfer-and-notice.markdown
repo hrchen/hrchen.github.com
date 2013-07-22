@@ -75,18 +75,15 @@ ARC下不再支持NSAutoreleasePool，需要使用@autoreleasepool{}替换。
 
 5)  错误`Passing address of non-local object to __autoreleasing parameter for write-back`。
 此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：
+下面接口的声明为`-(void)initArgument:(NSArray **)array`。
+
 ```
-//_array 和_dict是成员变量而非局部变量
-[CTViewController trainInfoList:&_array forSeats:&_dict];
+//_array是一个NSArray的成员变量，在这个方法中初始化，由于这个参数是__autoreleasing的，所以会报上面的错误
+[testObject initArgument:_array];
 ```
-处理方法也比较简单，生成一个临时局部变量即可：
-```
-NSArray *tempArray = nil;
-NSDictionary *tempDict = nil;
-[CTViewController trainInfoList:&tempArray forSeats:&tempDict];
-_array = tempArray;
-_dict = tempDict;
-```
+
+处理方法也比较简单，将方法的参数声明为__strong即可：`-(void)initArgument:(NSArray * __strong *)array`。
+
 
 ###ARC开发注意事项
 

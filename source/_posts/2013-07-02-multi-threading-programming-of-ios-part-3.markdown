@@ -25,7 +25,7 @@ GCD的调用接口非常简单，就是将Job提交至Queue中，主要的提交
 dispatch_async函数是异步非阻塞的，调用后会立刻返回，工作由系统在线程池中分配线程去执行工作。
 dispatch_sync和dispatch_after是阻塞式的，会一直等到添加的工作完成后才会返回。
 
-除了添加Block到Dispatch Queue，iOS 4之后新增了添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：
+除了添加Block到Dispatch Queue，还有添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：
 
 ```
 dispatch_async_f(dispatch_queue_t queue,
