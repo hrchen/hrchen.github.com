@@ -165,27 +165,16 @@
 ARC下不再支持NSAutoreleasePool，需要使用@autoreleasepool{}替换。</p>
 
 <p>5)  错误<code>Passing address of non-local object to __autoreleasing parameter for write-back</code>。
-此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：</p>
+此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：
+下面接口的声明为<code>-(void)initArgument:(NSArray **)array</code>。</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>//_array 和_dict是成员变量而非局部变量
-</span><span class='line'>[CTViewController trainInfoList:&_array forSeats:&_dict];</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//_array是一个NSArray的成员变量，在这个方法中初始化，由于这个参数是__autoreleasing的，所以会报上面的错误
+</span><span class='line'>[testObject initArgument:_array];</span></code></pre></td></tr></table></div></figure>
 
 
-<p>处理方法也比较简单，生成一个临时局部变量即可：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>NSArray *tempArray = nil;
-</span><span class='line'>NSDictionary *tempDict = nil;
-</span><span class='line'>[CTViewController trainInfoList:&tempArray forSeats:&tempDict];
-</span><span class='line'>_array = tempArray;
-</span><span class='line'>_dict = tempDict;</span></code></pre></td></tr></table></div></figure>
-
+<p>处理方法也比较简单，将方法的参数声明为__strong即可：<code>-(void)initArgument:(NSArray * __strong *)array</code>。</p>
 
 <h3>ARC开发注意事项</h3>
 

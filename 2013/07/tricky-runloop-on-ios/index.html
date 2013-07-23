@@ -1,0 +1,206 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>iOS中Run Loop的那些坑 - hrchen's blogging</title>
+	<meta name="author" content="hrchen">
+
+	
+	<meta name="description" content="iOS中Run Loop的那些坑 前段时间写了个关于iOS多线程编程的系列： iOS多线程编程Part 1/3 - NSThread &amp; Run Loop
+iOS多线程编程Part 2/3 - NSOperation
+iOS多线程编程Part 3/3 - GCD iOS多线程编程Part &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="hrchen's blogging" type="application/atom+xml">
+	
+	<link rel="canonical" href="http://hrchen.com/2013/07/tricky-runloop-on-ios/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		$(function(){
+			$('.profilepic').append("<img src='http://www.gravatar.com/avatar/" + MD5("dr.hrchen@gmail.com") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+		});
+	</script>
+</div>
+<hgroup>
+  <h1><a href="/">hrchen's blogging</a></h1>
+</hgroup>
+
+<p class="subtitle">Mobile Dev (dr.hrchen@gmail.com)</p>
+<p class="subtitle">CS Ph.D，专注移动产品开发，了解点后端</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		<a class="weibo" href="http://www.weibo.com/hrchen" title="Sina Weibo">Weibo</a>
+		
+		
+		
+		
+		<a class="twitter" href="http://twitter.com/hrchen" title="Twitter">Twitter</a>
+		
+		
+		<a class="github" href="https://github.com/hrchen" title="GitHub">GitHub</a>
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+	<h1 class="title" itemprop="name">iOS中Run Loop的那些坑</h1>
+	<div class="entry-content" itemprop="articleBody"><p>前段时间写了个关于iOS多线程编程的系列：</p>
+
+<ul>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a></li>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-2/">iOS多线程编程Part 2/3 - NSOperation</a></li>
+<li><a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a></li>
+</ul>
+
+
+<p><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a>中讨论了Run Loop的机制、接口和需要注意的坑，不过由于内容较多，描述Run Loop的坑写得很零散，本文做一个集中归纳。</p>
+
+<p><img src="/images/post/runloop_source.jpg"></p>
+
+<p>回顾一下，Run Loop就是个监听事件的循环，会不停的检查它的事件源(Timer和Input Source)有没有事件发生，如果有事件发生就处理事件或者调用事件的处理方法。</p>
+
+<h3>坑一</h3>
+
+<p>在线程中添加Timer时，肯定需要先生成Timer对象啦，有类方法也有实例方法，如果是使用scheduledTimerWith***接口生成的Timer对象，会自动添加到当前线程的NSDefaultRunLoopMode中；如果是其他接口生成的Timer对象，则需要用<code>-addTimer:forMode</code>添加Timer，这样做的好处是可以指定添加Timer的Run Loop以及模式。</p>
+
+<!-- more -->
+
+
+<h3>坑二</h3>
+
+<p>如果Run Loop中添加的是Timer而没有其他Input Source，而这个Timer只运行一次，那么Timer事件触发后Timer事件源就会从Run Loop删除，那么再运行Run Loop就会立刻返回；同时Timer事件触发是不会让Run Loop返回的，即使使用CF层的CFRunLoopRef运行接口<code>SInt32 CFRunLoopRunInMode (mode, seconds, returnAfterSourceHandled);</code>运行Run Loop，其第三个参数为YES，Timer事件触发仍然不会导致当前Run Loop的运行返回。</p>
+
+<h3>坑三</h3>
+
+<p>如果是使用NSRunLoop，有三个运行的接口：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//运行 NSRunLoop，运行模式为默认的NSDefaultRunLoopMode模式，没有超时限制
+</span><span class='line'>- (void)run;
+</span><span class='line'>
+</span><span class='line'>//运行 NSRunLoop: 参数为运行模式、时间期限，返回值为YES表示是处理事件后返回的，NO表示是超时或者停止运行导致返回的- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;
+</span><span class='line'>//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式 
+</span><span class='line'>- (void)runUntilDate:(NSDate *)limitDate;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>建议是使用第二个接口来运行，因为它能够设置Run Loop的运行参数最多，而且最重要的是可以使用CFRunLoopStop(runLoopRef)来停止Run Loop的运行，而第一个和第三个接口无法使用CFRunLoopStop(runLoopRef)来停止Run Loop的运行。</p>
+
+<h3>坑四</h3>
+
+<p>在使用NSURLConnection或者NSStream时，需要考虑到Run Loop的问题，默认情况下这两个对象生成后都是运行在当前线程的NSDefaultRunLoopMode模式的，如果是在主线程，那么在滚动ScrollView或者TableView时，主线程的Run Loop会运行在UITrackingRunLoopMode模式，那么NSURLConnection或者NSStream的回调就无法运行。因此最好是指定NSURLConnection或NSStream在Run Loop中的运行模式，两者有相同的接口<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>来设置NSURLConnection和NSStream的Run Loop以及模式，而且设置的Mode要设置为NSRunLoopCommonModes，因为NSRunLoopCommonModes默认会包含NSDefaultRunLoopMode和UITrackingRunLoopMode，这样无论Run Loop运行在哪个模式，都可以保证NSURLConnection或者NSStream的回调可以被调用。另外如果是在子线程中你设置了自定义的Run Loop模式，还可以用接口<code>CFRunLoopAddCommonMode(runLoopRef, mode)</code>添加到NSRunLoopCommonModes。</p>
+
+<p>不过NSURLConnection的使用有点特殊，必须使用它的designated initializer <code>- (id)initWithRequest:(NSURLRequest *)request delegate:(id)delegate startImmediately:(BOOL)startImmediately</code>生成NSURLConnection对象，而且第三个参数是否立刻启动NSURLConnection要设置为NO，之后再用<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>设置Run Loop与模式，再调用<code>[NSURLConnectionObject start]</code>启动。如果是其他接口生成NSURLConnection，用<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>设置Run Loop和mode都不会起作用。</p>
+</div>
+
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+	
+	
+	<a class="addthis_button_tweet"></a>
+	
+	
+	<a class="addthis_counter addthis_pill_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/250/addthis_widget.js#pubid="></script>
+</div>
+
+
+
+<section id="comment">
+    <h1 class="title">Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2013 - hrchen -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'hrchen';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://hrchen.com/2013/07/tricky-runloop-on-ios/';
+        var disqus_url = 'http://hrchen.com/2013/07/tricky-runloop-on-ios/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>

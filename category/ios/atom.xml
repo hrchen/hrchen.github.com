@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-16T23:50:16+08:00</updated>
+  <updated>2013-07-23T14:29:57+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -12,6 +12,162 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS中GCD的那些坑]]></title>
+    <link href="http://hrchen.com/2013/07/tricky-gcd-on-ios/"/>
+    <updated>2013-07-20T17:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/tricky-gcd-on-ios</id>
+    <content type="html"><![CDATA[<p>之前一个系列中<a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a>介绍了GCD的各类接口，别仅仅使用了最基本的dispatch_async和dispatch_sync接口提交个Block完事，那就白瞎GCD的强大功能了。要用高级接口，照旧会有坑在那里，绝大多数坑并不是设计缺陷，而是自身特性造成的误用，本文会记录下这些坑。</p>
+
+<h3>坑一</h3>
+
+<p>GCD需要自己生成AutoreleasePool吗？正常我们用NSThread的接口生成一个子线程时，都会在入口方法里生成NSAutoreleasePool或者用@@autoreleasepool{}来回收autoreleased的对象，那么在GCD的Block中呢？</p>
+
+<p>GCD会自动管理每个Queue的autorelease pool，但是我们无法保证什么时候它回去drain(文档中没有说明)，有可能在一个Block执行结束后，也可能很多个Block执行结束后。因此如果仅仅生成少量对象，那就没有必要去自己生成NSAutoreleasePool；否则就自己生成一个NSAutoreleasePool来控制drain pool。</p>
+
+<!--more-->
+
+
+<h3>坑二</h3>
+
+<p>dispatch_once提供是和pthread库中类似pthread_once的功能，dispatch_once接口是指在整个App运行期间运行且仅运行一次提交的Block，但是由于dispatch_once会导致调试非常困难，因为最好少用dispatch_once，就像尽量少用NSObject的类方法+initialize()和+(void)load。</p>
+
+<p>目前用到dispatch_once比较多的地方是在实现singleton单例模式的时候，要注意第一个参数dispatch_once_t必须是个全局或者static变量。</p>
+
+<h3>坑三</h3>
+
+<p>dispatch_after(when, queue, block)接口用于在一个时间间隔后执行提交的Block，其中第一个参数类型是dispatch_time_t，可以支持纳秒级的延迟执行，例如：</p>
+
+<p><code>
+double delayInSeconds = 0.01;
+dispatch_time_t delayTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t) (delayInSeconds * NSEC_PER_SEC));
+</code></p>
+
+<p>然而如果在App中用dispatch_after来控制UI的显示顺序时确实非常危险的，可能并不见的严格按照你期望的延迟量去显示UI，所以最好还是少碰dispatch_after，而是通过合适的回调来控制UI先后顺序，例如利用-viewWillAppear和-viewDidAppear来处理UI的先后顺序。</p>
+
+<h3>坑四</h3>
+
+<p>如果使用dispatch_get_global_queue来生成全局队列时，可以设置4种优先级设置，但是如果没有明确的必要，不要在程序中使用不同的优先级来控制Block的执行，尤其是在特殊情况可能会导致这篇<a href="http://www.objc.io/issue-2/concurrency-apis-and-pitfalls.html">Blog</a>提到的Priority Inversion问题，具体为什么直接查看这篇Blog的说明，记住一点尽量只用DISPATCH_QUEUE_PRIORITY_DEFAULT默认的优先级创建全局队列。</p>
+
+<h3>坑五</h3>
+
+<p>多线程开发最危险的两件事就是死锁和公共资源访问问题。使用GCD的场景如果很复杂，就有非常大的可能遇到死锁问题，尤其是在使用dispatch_sync的时候：</p>
+
+<p>```
+dispatch_sync(queue, ^(){</p>
+
+<pre><code>dispatch_sync(queue, ^(){
+    foo();
+});
+</code></pre>
+
+<p>});
+```
+上面代码就会导致死锁，当然我们很少会这么写代码，但是如果这样用用dispatch_sync：</p>
+
+<p>```
+void test1()
+{</p>
+
+<pre><code>dispatch_sync(queueA, ^(){
+    test2();
+});
+</code></pre>
+
+<p>}</p>
+
+<p>void test2()
+{</p>
+
+<pre><code>dispatch_sync(queueB, ^(){
+    test3();
+});
+</code></pre>
+
+<p>}</p>
+
+<p>void test3()
+{</p>
+
+<pre><code>dispatch_sync(queueA, ^(){
+    //do something
+});
+</code></pre>
+
+<p>}
+```</p>
+
+<p>如果上面的代码调用test1()，就会导致死锁，这种在某些巧妙的调用关系发生才会导致的死锁可能很难发现，所以如果没有必要，尽量不要使用dispatch_sync。</p>
+
+<p>如果使用dispatch_async，就不会导致死锁，即使像这样调用：</p>
+
+<p>```
+dispatch_async(queue, ^(){</p>
+
+<pre><code>dispatch_async(queue, ^(){
+    foo();
+});
+</code></pre>
+
+<p>});
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS中Run Loop的那些坑]]></title>
+    <link href="http://hrchen.com/2013/07/tricky-runloop-on-ios/"/>
+    <updated>2013-07-14T21:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/tricky-runloop-on-ios</id>
+    <content type="html"><![CDATA[<p>前段时间写了个关于iOS多线程编程的系列：</p>
+
+<ul>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a></li>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-2/">iOS多线程编程Part 2/3 - NSOperation</a></li>
+<li><a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a></li>
+</ul>
+
+
+<p><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a>中讨论了Run Loop的机制、接口和需要注意的坑，不过由于内容较多，描述Run Loop的坑写得很零散，本文做一个集中归纳。</p>
+
+<p><img src="/images/post/runloop_source.jpg"></p>
+
+<p>回顾一下，Run Loop就是个监听事件的循环，会不停的检查它的事件源(Timer和Input Source)有没有事件发生，如果有事件发生就处理事件或者调用事件的处理方法。</p>
+
+<h3>坑一</h3>
+
+<p>在线程中添加Timer时，肯定需要先生成Timer对象啦，有类方法也有实例方法，如果是使用scheduledTimerWith***接口生成的Timer对象，会自动添加到当前线程的NSDefaultRunLoopMode中；如果是其他接口生成的Timer对象，则需要用<code>-addTimer:forMode</code>添加Timer，这样做的好处是可以指定添加Timer的Run Loop以及模式。</p>
+
+<!-- more -->
+
+
+<h3>坑二</h3>
+
+<p>如果Run Loop中添加的是Timer而没有其他Input Source，而这个Timer只运行一次，那么Timer事件触发后Timer事件源就会从Run Loop删除，那么再运行Run Loop就会立刻返回；同时Timer事件触发是不会让Run Loop返回的，即使使用CF层的CFRunLoopRef运行接口<code>SInt32 CFRunLoopRunInMode (mode, seconds, returnAfterSourceHandled);</code>运行Run Loop，其第三个参数为YES，Timer事件触发仍然不会导致当前Run Loop的运行返回。</p>
+
+<h3>坑三</h3>
+
+<p>如果是使用NSRunLoop，有三个运行的接口：</p>
+
+<p>```
+//运行 NSRunLoop，运行模式为默认的NSDefaultRunLoopMode模式，没有超时限制
+- (void)run;</p>
+
+<p>//运行 NSRunLoop: 参数为运行模式、时间期限，返回值为YES表示是处理事件后返回的，NO表示是超时或者停止运行导致返回的- (BOOL)runMode:(NSString <em>)mode beforeDate:(NSDate </em>)limitDate;
+//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式
+- (void)runUntilDate:(NSDate *)limitDate;
+```</p>
+
+<p>建议是使用第二个接口来运行，因为它能够设置Run Loop的运行参数最多，而且最重要的是可以使用CFRunLoopStop(runLoopRef)来停止Run Loop的运行，而第一个和第三个接口无法使用CFRunLoopStop(runLoopRef)来停止Run Loop的运行。</p>
+
+<h3>坑四</h3>
+
+<p>在使用NSURLConnection或者NSStream时，需要考虑到Run Loop的问题，默认情况下这两个对象生成后都是运行在当前线程的NSDefaultRunLoopMode模式的，如果是在主线程，那么在滚动ScrollView或者TableView时，主线程的Run Loop会运行在UITrackingRunLoopMode模式，那么NSURLConnection或者NSStream的回调就无法运行。因此最好是指定NSURLConnection或NSStream在Run Loop中的运行模式，两者有相同的接口<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>来设置NSURLConnection和NSStream的Run Loop以及模式，而且设置的Mode要设置为NSRunLoopCommonModes，因为NSRunLoopCommonModes默认会包含NSDefaultRunLoopMode和UITrackingRunLoopMode，这样无论Run Loop运行在哪个模式，都可以保证NSURLConnection或者NSStream的回调可以被调用。另外如果是在子线程中你设置了自定义的Run Loop模式，还可以用接口<code>CFRunLoopAddCommonMode(runLoopRef, mode)</code>添加到NSRunLoopCommonModes。</p>
+
+<p>不过NSURLConnection的使用有点特殊，必须使用它的designated initializer <code>- (id)initWithRequest:(NSURLRequest *)request delegate:(id)delegate startImmediately:(BOOL)startImmediately</code>生成NSURLConnection对象，而且第三个参数是否立刻启动NSURLConnection要设置为NO，之后再用<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>设置Run Loop与模式，再调用<code>[NSURLConnectionObject start]</code>启动。如果是其他接口生成NSURLConnection，用<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>设置Run Loop和mode都不会起作用。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[ARC工程转换和开发注意事项]]></title>
@@ -93,18 +249,14 @@ ARC下不再支持NSAutoreleasePool，需要使用@autoreleasepool{}替换。</p
 
 <p>5)  错误<code>Passing address of non-local object to __autoreleasing parameter for write-back</code>。
 此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：
-<code>
-//_array 和_dict是成员变量而非局部变量
-[CTViewController trainInfoList:&amp;_array forSeats:&amp;_dict];
-</code>
-处理方法也比较简单，生成一个临时局部变量即可：
-<code>
-NSArray *tempArray = nil;
-NSDictionary *tempDict = nil;
-[CTViewController trainInfoList:&amp;tempArray forSeats:&amp;tempDict];
-_array = tempArray;
-_dict = tempDict;
+下面接口的声明为<code>-(void)initArgument:(NSArray **)array</code>。</p>
+
+<p><code>
+//_array是一个NSArray的成员变量，在这个方法中初始化，由于这个参数是__autoreleasing的，所以会报上面的错误
+[testObject initArgument:_array];
 </code></p>
+
+<p>处理方法也比较简单，将方法的参数声明为__strong即可：<code>-(void)initArgument:(NSArray * __strong *)array</code>。</p>
 
 <h3>ARC开发注意事项</h3>
 
@@ -272,315 +424,6 @@ return theManager;
 <p>那么对于+load呢？如果你在类的实现中实现了+load，但是在这个类的Category中又实现了一个+load，那么这两个+load都会被调用。</p>
 
 <p>既然这两个方法都是如此的诡异，所以除非必要，最好都不要在这两个方法中执行太多的操作，尤其是+load。绕过坑，远离危险。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS多线程编程Part 3/3 - GCD]]></title>
-    <link href="http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/"/>
-    <updated>2013-07-02T21:20:00+08:00</updated>
-    <id>http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3</id>
-    <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。</p>
-
-<h3>前言</h3>
-
-<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比自定义NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
-
-<p>```
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{</p>
-
-<pre><code>[self doTask];
-NSLog(@"Fisinished");
-</code></pre>
-
-<p>});
-```</p>
-
-<p>另外，GCD是开源的喔：<a href="http://libdispatch.macosforge.org/">libdispatch</a></p>
-
-<h3>Dispatch Queue</h3>
-
-<p>要添加工作到队列Dispatch Queue中，这个队列可以是串行或者并行的，并行队列会尽可能的并发执行其中的工作任务，而串行队列每次只能运行一个工作任务。</p>
-
-<!--more-->
-
-
-<p>目前GCD中有三种类型的Dispatch Queue：</p>
-
-<ul>
-<li>Main Queue：关联到主线程的队列，可以使用函数dispatch_get_main_queue()获得，加到这个队列中的工作都会分发到主线程运行。主线程只有一个，因此很明显这个是串行队列，每次运行一个工作。</li>
-<li>Global Queue：全局队列是并发队列，又根据优先级细分为高优先级、默认优先级和低优先级三种。通过dispatch_get_global_queue加上优先级参数获得这个全局队列，例如<code>dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)</code></li>
-<li>自定义Queue：自己创建一个队列，通过函数dispatch_queue_create创建，例如<code>dispatch_queue_create("com.kiloapp.test", NULL)</code>。第一个参数是队列的名字，Apple建议使用反DNS型的名字命名，防止重名；第二个参数是创建的queue的类型，iOS 4.3以前只支持串行，即DISPATCH_QUEUE_SERIAL(就是NULL)，iOS4.3以后也开始支持并行队列，即参数DISPATCH_QUEUE_CONCURRENT。</li>
-</ul>
-
-
-<h3>添加工作任务</h3>
-
-<p>添加工作任务到队列也非常简单，调用函数dispatch_async()，两个参数，一个就是Dispatch Queue，另一个是一个包含工作的Block，就像本文开头的示例一样。dispatch_async函数是非阻塞的，调用后会立刻返回，工作由系统分配线程去执行工作。因此另一种常见的使用模式是：</p>
-
-<p>```
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{</p>
-
-<pre><code>[self doHardWorkInBackground];
-dispatch_async(dispatch_get_main_queue(), ^{
-    [self updateUI];
-});
-</code></pre>
-
-<p>});
-```
-可以将一些耗时的工作添加到全局队列，让系统分配线程在后台中去做，完成后，再次调用GCD的主队列去完成UI相关的工作，这样做就不会因为大量的非UI相关工作加重主线程负担，加快UI事件响应。</p>
-
-<p>与dispatch_async对应的有一个dispatch_sync方法，它是阻塞式的，会一直等到添加的工作完成后才会返回。</p>
-
-<p>除了添加Block到Dispatch Queue，iOS 4之后新增了添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：</p>
-
-<p>```
-dispatch_async_f(dispatch_queue_t queue,</p>
-
-<pre><code>             void *context,
-             dispatch_function_t work);
-</code></pre>
-
-<p><code>``
-其中第三个参数就是个函数指针，即</code>typedef void (<em>dispatch_function_t)(void </em>);`；第二个参数是传给这个函数的参数。</p>
-
-<h3>Dispatch Group</h3>
-
-<p>GCD确实非常简单好用，不过有些情况还是有点问题，例如：</p>
-
-<p>```
-for(id obj in array)
-{</p>
-
-<pre><code>[self doWorkOnItem:obj];
-</code></pre>
-
-<p>}
-[self doWorkOnArray:array];
-```</p>
-
-<p>前半部分可以用GCD得到处理性能的提升：</p>
-
-<p>```
-dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-for(id obj in array)</p>
-
-<pre><code>dispatch_async(queue, ^{
-    [self doWorkOnItem:obj];
-});
-</code></pre>
-
-<p>[self doWorkOnArray:array];
-<code>``
-问题是</code>[self doWorkOnArray:array];<code>原先是在全部数组各个成员的工作完成后才会执行的，现在由于dispatch_async是非阻塞的，</code>[self doWorkOnArray:array];`很有可能在各个成员的工作完成前就运行了，这明显不符合我们的目的。如果将dispatch_async改成dispatch_sync可以解决问题，但是和原来的方法一样失去了并行的好处，也没有意义了。</p>
-
-<p>针对这种情况，GCD提供了Dispatch Group可以将一组工作集合在一起，等待这组工作完成后再继续运行。dispatch_group_create函数可以用来创建这个Group：</p>
-
-<p>```
-dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-dispatch_group_t group = dispatch_group_create();
-for(id obj in array)</p>
-
-<pre><code>dispatch_group_async(group, queue, ^{
-    [self doWorkOnItem:obj];
-});
-</code></pre>
-
-<p>dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
-dispatch_release(group);
-[self doWorkOnArray:array];
-```</p>
-
-<p>方法是不是很简单，将并发的工作用dispatch_group_async添加到一个Group和全局队列中，dispatch_group_wait会等待这些工作完成后再返回，这样你就可以再运行<code>[self doWorkOnArray:array];</code>。</p>
-
-<p>不过有点不好的是dispatch_group_wait会阻塞当前线程，如果当前是主线程岂不是不好，有更绝的：</p>
-
-<p>```
-dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-dispatch_group_t group = dispatch_group_create();
-for(id obj in array)</p>
-
-<pre><code>dispatch_group_async(group, queue, ^{
-    [self doWorkOnItem:obj];
-});
-</code></pre>
-
-<p>dispatch_group_notify(group, queue, ^{</p>
-
-<pre><code>[self doWorkOnArray:array];
-</code></pre>
-
-<p>});
-dispatch_release(group);
-```
-dispatch_group_notify函数可以将这个Group完成后的工作也同样添加到队列中（如果是需要更新UI，这个队列也可以是主队列），总之这样做就完全不会阻塞当前线程了。</p>
-
-<h3>Dispatch Apply</h3>
-
-<p>如果就是要同步的执行对数组元素的逐个操作，GCD也提供了一个简便的dispatch_apply函数：</p>
-
-<p>```
-dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-dispatch_apply([array count], queue, ^(size_t index){</p>
-
-<pre><code>[self doWorkOnItem:obj:[array objectAtIndex:index]];
-</code></pre>
-
-<p>});
-[self doWorkOnArray:array];
-```</p>
-
-<p>要了解更全的接口，查看《Grand Central Dispatch (GCD) Reference》。</p>
-
-<h3>其他有趣的特性</h3>
-
-<ul>
-<li>Dispatch Source</li>
-</ul>
-
-
-<p>Run Loop有Input Source，GCD也同样支持一系列事件，就是监听事件发生后会执行一个Block形式的Handler。Dispatch Source支持的事件源类型有：Timer源、signal信号源、描述符(文件或者网络描述符)源、进程源、Port源、自定义源。当然有些源由于iOS系统原因肯定是无法使用的，例如进程源、Port源、、signal信号源。</p>
-
-<p>举个自定义源的例子，假如我们在处理上面那个数组时要在UI中显示一个进度条：</p>
-
-<p>```
-dispatch_source_t source = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_main_queue());</p>
-
-<p>dispatch_source_set_event_handler(source, ^{</p>
-
-<pre><code>[progressIndicator incrementBy:dispatch_source_get_data(source)];
-</code></pre>
-
-<p>});
-dispatch_resume(source);</p>
-
-<p>dispatch_apply([array count], globalQueue, ^(size_t index) {</p>
-
-<pre><code>[self doWorkOnItem:obj:[array objectAtIndex:index]];
-dispatch_source_merge_data(source, 1);
-</code></pre>
-
-<p>});
-```
-dispatch source创建后是出于suspend状态的，必须使用dispatch_resume来恢复，dispatch_apply中每处理一个数组元素会调用dispatch_source_merge_data加1，那么这个source的事件handler就可以通过dispatch_source_get_data拿到source的数据。</p>
-
-<ul>
-<li>单例</li>
-</ul>
-
-
-<p>传统我们实现单例是这样：</p>
-
-<p>```
-+ (id)sharedManager
-{</p>
-
-<pre><code>static Manager *theManager = nil;
-@synchronized([Manager class])
-{
-    if(!theManager)
-        theManager = [[Manager alloc] init];
-}
-return theManager;
-</code></pre>
-
-<p>}</p>
-
-<p>```
-这个的成本还是有点高，每次访问都会有同步锁，而GCD有个dispatch_once方法(类似于<a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/pthread_once.html">pthread_once</a>)可以保证只运行一次初始化：</p>
-
-<p>```
-+ (id)sharedWhatever
-{</p>
-
-<pre><code>static dispatch_once_t pred;
-static Manager *theManager = nil;
-dispatch_once(&amp;pred, ^{
-    theManager = [[Manager alloc] init];
-});
-return theManager;
-</code></pre>
-
-<p>}
-```
-需要注意dispatch_once_t最好使用全局变量或者是static的，否则可能导致无法确定的行为。由于dispatch_once的调试非常困难，所以最好还是少用，单例应该是少数值得用的地方了。</p>
-
-<ul>
-<li>信号量Semaphore</li>
-</ul>
-
-
-<p>和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create用于创建，dispatch_semaphore_signal用于通知，dispatch_semaphore_wait用于等待。</p>
-
-<h3>参考资料</h3>
-
-<p><a href="https://developer.apple.com/library/mac/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html">Grand Central Dispatch (GCD) Reference</a></p>
-
-<p><a href="https://developer.apple.com/library/ios/#documentation/Cocoa/Conceptual/Blocks/Articles/00_Introduction.html">Blocks Programming Topics</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[一个NSURLConnectionDelegate的坑]]></title>
-    <link href="http://hrchen.com/2013/06/tricky-nsurlconnectiondelegate/"/>
-    <updated>2013-06-30T04:20:00+08:00</updated>
-    <id>http://hrchen.com/2013/06/tricky-nsurlconnectiondelegate</id>
-    <content type="html"><![CDATA[<p>NSURLConnection的坑还是蛮多的，上次是<a href="http://www.hrchen.com/2013/06/nsurlconnection-with-nsrunloopcommonmodes/">RunLoopMode的问题</a>，这次是关于NSURLConnectionDelegate。</p>
-
-<p>NSURLConnection的代理Protocol定义有三类：NSURLConnectionDelegate、NSURLConnectionDataDelegate和NSURLConnectionDownloadDelegate。</p>
-
-<ul>
-<li>NSURLConnectionDelegate：所有类型NSURLConnection的基础代理方法，都是Optional的方法，主要是涉及SSL/TSL加密的相关接口。</li>
-</ul>
-
-
-<p>```
-@optional
-- (void)connection:(NSURLConnection <em>)connection didFailWithError:(NSError </em>)error;
-- (BOOL)connectionShouldUseCredentialStorage:(NSURLConnection <em>)connection;
-- (void)connection:(NSURLConnection </em>)connection willSendRequestForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;</p>
-
-<p>```
-* NSURLConnectionDataDelegate：用于将网络请求的数据存放到内存中(以NSData的形式)的代理方法。所有方法都是Optional的。</p>
-
-<!--more-->
-
-
-<p>```
-@optional
-- (NSURLRequest <em>)connection:(NSURLConnection </em>)connection willSendRequest:(NSURLRequest <em>)request redirectResponse:(NSURLResponse </em>)response;
-- (void)connection:(NSURLConnection <em>)connection didReceiveResponse:(NSURLResponse </em>)response;</p>
-
-<ul>
-<li><p>(void)connection:(NSURLConnection <em>)connection didReceiveData:(NSData </em>)data;</p></li>
-<li><p>(NSInputStream <em>)connection:(NSURLConnection </em>)connection needNewBodyStream:(NSURLRequest *)request;</p></li>
-<li><p>(void)connection:(NSURLConnection *)connection   didSendBodyData:(NSInteger)bytesWritten
-                                               totalBytesWritten:(NSInteger)totalBytesWritten
-                                       totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;</p></li>
-<li><p>(NSCachedURLResponse <em>)connection:(NSURLConnection </em>)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse;</p></li>
-<li><p>(void)connectionDidFinishLoading:(NSURLConnection *)connection;</p></li>
-</ul>
-
-
-<p>```
-* NSURLConnectionDownloadDelegate：用于将网络资源直接保存到文件中的代理方法，除了connectionDidFinishDownloading:destinationURL:都是Optional的方法。connectionDidFinishDownloading:destinationURL回调可以告知你下载的网络数据最终存放的文件位置，正常都是在iPhone应用沙盒的/tmp目录下。</p>
-
-<p>```
-@optional
-- (void)connection:(NSURLConnection <em>)connection didWriteData:(long long)bytesWritten totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;
-- (void)connectionDidResumeDownloading:(NSURLConnection </em>)connection totalBytesWritten:(long long)totalBytesWritten expectedTotalBytes:(long long) expectedTotalBytes;</p>
-
-<p>@required
-- (void)connectionDidFinishDownloading:(NSURLConnection <em>)connection destinationURL:(NSURL </em>) destinationURL;</p>
-
-<p>```</p>
-
-<p>由于生成NSURLConnectin对象传入delegate参数时类型就是id，而不是传统id&lt;***Delegate>形式，那么如何确定当前代理实现的是什么类型的NSURLConnectionDelegate代理呢？方法也很诡异，如果你的代理实现了connectionDidFinishDownloading:destinationURL:，那么就表示你要实现的是NSURLConnectionDownloadDelegate，NSURLConnectionDataDelegate中的connection:DidReceiveData就不会得到回调，即使你实现了它。道理很简单，这两类代理一个是用于将下载数据保存到文件上，另一个是保存到内存中，只能两者居其一。</p>
-
-<p>故事还没有结束 ，如果你实现了connectionDidFinishDownloading:destinationURL并且想通过回到得到的destinationURL读取保存数据的文件时，令人惊讶的发现这个文件居然不存在，因为这类NSURLConnectionDataDelegate回调是用于Newsstand类型的App开发的，用于将杂志等信息保存到本地文件。实在想不通为什么只有Newsstand类型App才能用这组接口，很多开发者早已发了bug报告给Apple，Apple也已经确认，但是从iOS5到了iOS7，这个“bug”还是没有被修复。</p>
-
-<p>附带我在Stackoverflow上的<a href="http://stackoverflow.com/questions/11047169/how-may-delegate-method-from-one-protocol-prevent-execution-of-another-one-from/17369617#17369617">回答</a>。</p>
 ]]></content>
   </entry>
   

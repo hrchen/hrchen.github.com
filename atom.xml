@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-16T23:50:16+08:00</updated>
+  <updated>2013-07-23T14:29:57+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -12,6 +12,183 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS中GCD的那些坑]]></title>
+    <link href="http://hrchen.com/2013/07/tricky-gcd-on-ios/"/>
+    <updated>2013-07-20T17:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/tricky-gcd-on-ios</id>
+    <content type="html"><![CDATA[<p>之前一个系列中<a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a>介绍了GCD的各类接口，别仅仅使用了最基本的dispatch_async和dispatch_sync接口提交个Block完事，那就白瞎GCD的强大功能了。要用高级接口，照旧会有坑在那里，绝大多数坑并不是设计缺陷，而是自身特性造成的误用，本文会记录下这些坑。</p>
+
+<h3>坑一</h3>
+
+<p>GCD需要自己生成AutoreleasePool吗？正常我们用NSThread的接口生成一个子线程时，都会在入口方法里生成NSAutoreleasePool或者用@@autoreleasepool{}来回收autoreleased的对象，那么在GCD的Block中呢？</p>
+
+<p>GCD会自动管理每个Queue的autorelease pool，但是我们无法保证什么时候它回去drain(文档中没有说明)，有可能在一个Block执行结束后，也可能很多个Block执行结束后。因此如果仅仅生成少量对象，那就没有必要去自己生成NSAutoreleasePool；否则就自己生成一个NSAutoreleasePool来控制drain pool。</p>
+
+<!--more-->
+
+
+<h3>坑二</h3>
+
+<p>dispatch_once提供是和pthread库中类似pthread_once的功能，dispatch_once接口是指在整个App运行期间运行且仅运行一次提交的Block，但是由于dispatch_once会导致调试非常困难，因为最好少用dispatch_once，就像尽量少用NSObject的类方法+initialize()和+(void)load。</p>
+
+<p>目前用到dispatch_once比较多的地方是在实现singleton单例模式的时候，要注意第一个参数dispatch_once_t必须是个全局或者static变量。</p>
+
+<h3>坑三</h3>
+
+<p>dispatch_after(when, queue, block)接口用于在一个时间间隔后执行提交的Block，其中第一个参数类型是dispatch_time_t，可以支持纳秒级的延迟执行，例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>double delayInSeconds = 0.01;
+</span><span class='line'>dispatch_time_t delayTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t) (delayInSeconds * NSEC_PER_SEC));</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然而如果在App中用dispatch_after来控制UI的显示顺序时确实非常危险的，可能并不见的严格按照你期望的延迟量去显示UI，所以最好还是少碰dispatch_after，而是通过合适的回调来控制UI先后顺序，例如利用-viewWillAppear和-viewDidAppear来处理UI的先后顺序。</p>
+
+<h3>坑四</h3>
+
+<p>如果使用dispatch_get_global_queue来生成全局队列时，可以设置4种优先级设置，但是如果没有明确的必要，不要在程序中使用不同的优先级来控制Block的执行，尤其是在特殊情况可能会导致这篇<a href="http://www.objc.io/issue-2/concurrency-apis-and-pitfalls.html">Blog</a>提到的Priority Inversion问题，具体为什么直接查看这篇Blog的说明，记住一点尽量只用DISPATCH_QUEUE_PRIORITY_DEFAULT默认的优先级创建全局队列。</p>
+
+<h3>坑五</h3>
+
+<p>多线程开发最危险的两件事就是死锁和公共资源访问问题。使用GCD的场景如果很复杂，就有非常大的可能遇到死锁问题，尤其是在使用dispatch_sync的时候：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_sync(queue, ^(){
+</span><span class='line'>    dispatch_sync(queue, ^(){
+</span><span class='line'>        foo();
+</span><span class='line'>    });
+</span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面代码就会导致死锁，当然我们很少会这么写代码，但是如果这样用用dispatch_sync：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>void test1()
+</span><span class='line'>{
+</span><span class='line'>  dispatch_sync(queueA, ^(){
+</span><span class='line'>      test2();
+</span><span class='line'>  });
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>void test2()
+</span><span class='line'>{
+</span><span class='line'>    dispatch_sync(queueB, ^(){
+</span><span class='line'>        test3();
+</span><span class='line'>    });
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>void test3()
+</span><span class='line'>{
+</span><span class='line'>    dispatch_sync(queueA, ^(){
+</span><span class='line'>        //do something
+</span><span class='line'>    });
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果上面的代码调用test1()，就会导致死锁，这种在某些巧妙的调用关系发生才会导致的死锁可能很难发现，所以如果没有必要，尽量不要使用dispatch_sync。</p>
+
+<p>如果使用dispatch_async，就不会导致死锁，即使像这样调用：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async(queue, ^(){
+</span><span class='line'>    dispatch_async(queue, ^(){
+</span><span class='line'>        foo();
+</span><span class='line'>    });
+</span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS中Run Loop的那些坑]]></title>
+    <link href="http://hrchen.com/2013/07/tricky-runloop-on-ios/"/>
+    <updated>2013-07-14T21:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/tricky-runloop-on-ios</id>
+    <content type="html"><![CDATA[<p>前段时间写了个关于iOS多线程编程的系列：</p>
+
+<ul>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a></li>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-2/">iOS多线程编程Part 2/3 - NSOperation</a></li>
+<li><a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a></li>
+</ul>
+
+
+<p><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a>中讨论了Run Loop的机制、接口和需要注意的坑，不过由于内容较多，描述Run Loop的坑写得很零散，本文做一个集中归纳。</p>
+
+<p><img src="http://hrchen.com/images/post/runloop_source.jpg"></p>
+
+<p>回顾一下，Run Loop就是个监听事件的循环，会不停的检查它的事件源(Timer和Input Source)有没有事件发生，如果有事件发生就处理事件或者调用事件的处理方法。</p>
+
+<h3>坑一</h3>
+
+<p>在线程中添加Timer时，肯定需要先生成Timer对象啦，有类方法也有实例方法，如果是使用scheduledTimerWith***接口生成的Timer对象，会自动添加到当前线程的NSDefaultRunLoopMode中；如果是其他接口生成的Timer对象，则需要用<code>-addTimer:forMode</code>添加Timer，这样做的好处是可以指定添加Timer的Run Loop以及模式。</p>
+
+<!-- more -->
+
+
+<h3>坑二</h3>
+
+<p>如果Run Loop中添加的是Timer而没有其他Input Source，而这个Timer只运行一次，那么Timer事件触发后Timer事件源就会从Run Loop删除，那么再运行Run Loop就会立刻返回；同时Timer事件触发是不会让Run Loop返回的，即使使用CF层的CFRunLoopRef运行接口<code>SInt32 CFRunLoopRunInMode (mode, seconds, returnAfterSourceHandled);</code>运行Run Loop，其第三个参数为YES，Timer事件触发仍然不会导致当前Run Loop的运行返回。</p>
+
+<h3>坑三</h3>
+
+<p>如果是使用NSRunLoop，有三个运行的接口：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//运行 NSRunLoop，运行模式为默认的NSDefaultRunLoopMode模式，没有超时限制
+</span><span class='line'>- (void)run;
+</span><span class='line'>
+</span><span class='line'>//运行 NSRunLoop: 参数为运行模式、时间期限，返回值为YES表示是处理事件后返回的，NO表示是超时或者停止运行导致返回的- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;
+</span><span class='line'>//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式 
+</span><span class='line'>- (void)runUntilDate:(NSDate *)limitDate;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>建议是使用第二个接口来运行，因为它能够设置Run Loop的运行参数最多，而且最重要的是可以使用CFRunLoopStop(runLoopRef)来停止Run Loop的运行，而第一个和第三个接口无法使用CFRunLoopStop(runLoopRef)来停止Run Loop的运行。</p>
+
+<h3>坑四</h3>
+
+<p>在使用NSURLConnection或者NSStream时，需要考虑到Run Loop的问题，默认情况下这两个对象生成后都是运行在当前线程的NSDefaultRunLoopMode模式的，如果是在主线程，那么在滚动ScrollView或者TableView时，主线程的Run Loop会运行在UITrackingRunLoopMode模式，那么NSURLConnection或者NSStream的回调就无法运行。因此最好是指定NSURLConnection或NSStream在Run Loop中的运行模式，两者有相同的接口<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>来设置NSURLConnection和NSStream的Run Loop以及模式，而且设置的Mode要设置为NSRunLoopCommonModes，因为NSRunLoopCommonModes默认会包含NSDefaultRunLoopMode和UITrackingRunLoopMode，这样无论Run Loop运行在哪个模式，都可以保证NSURLConnection或者NSStream的回调可以被调用。另外如果是在子线程中你设置了自定义的Run Loop模式，还可以用接口<code>CFRunLoopAddCommonMode(runLoopRef, mode)</code>添加到NSRunLoopCommonModes。</p>
+
+<p>不过NSURLConnection的使用有点特殊，必须使用它的designated initializer <code>- (id)initWithRequest:(NSURLRequest *)request delegate:(id)delegate startImmediately:(BOOL)startImmediately</code>生成NSURLConnection对象，而且第三个参数是否立刻启动NSURLConnection要设置为NO，之后再用<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>设置Run Loop与模式，再调用<code>[NSURLConnectionObject start]</code>启动。如果是其他接口生成NSURLConnection，用<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>设置Run Loop和mode都不会起作用。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[ARC工程转换和开发注意事项]]></title>
@@ -97,27 +274,16 @@
 ARC下不再支持NSAutoreleasePool，需要使用@autoreleasepool{}替换。</p>
 
 <p>5)  错误<code>Passing address of non-local object to __autoreleasing parameter for write-back</code>。
-此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：</p>
+此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：
+下面接口的声明为<code>-(void)initArgument:(NSArray **)array</code>。</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>//_array 和_dict是成员变量而非局部变量
-</span><span class='line'>[CTViewController trainInfoList:&_array forSeats:&_dict];</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//_array是一个NSArray的成员变量，在这个方法中初始化，由于这个参数是__autoreleasing的，所以会报上面的错误
+</span><span class='line'>[testObject initArgument:_array];</span></code></pre></td></tr></table></div></figure>
 
 
-<p>处理方法也比较简单，生成一个临时局部变量即可：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>NSArray *tempArray = nil;
-</span><span class='line'>NSDictionary *tempDict = nil;
-</span><span class='line'>[CTViewController trainInfoList:&tempArray forSeats:&tempDict];
-</span><span class='line'>_array = tempArray;
-</span><span class='line'>_dict = tempDict;</span></code></pre></td></tr></table></div></figure>
-
+<p>处理方法也比较简单，将方法的参数声明为__strong即可：<code>-(void)initArgument:(NSArray * __strong *)array</code>。</p>
 
 <h3>ARC开发注意事项</h3>
 
@@ -311,11 +477,11 @@ Block对象常见的循环引用问题如下：</p>
     <link href="http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/"/>
     <updated>2013-07-02T21:20:00+08:00</updated>
     <id>http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3</id>
-    <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。</p>
+    <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是基于Objective-C的Block特性开发的，基本业务逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation子类使用起来更方便，大大降低了多线程开发的门槛。另外，GCD是开源的喔：<a href="http://libdispatch.macosforge.org/">libdispatch</a></p>
 
-<h3>前言</h3>
+<h3>基本用法</h3>
 
-<p>GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是完全基于Objective-C的Block特性开发的，基本调用逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比自定义NSOperation更加方便，大大降低了多线程开发的门槛。示例：</p>
+<p>首先示例：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -327,14 +493,35 @@ Block对象常见的循环引用问题如下：</p>
 </span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
 
 
-<p>另外，GCD是开源的喔：<a href="http://libdispatch.macosforge.org/">libdispatch</a></p>
+<p>GCD的调用接口非常简单，就是将Job提交至Queue中，主要的提交Job接口为：</p>
+
+<ul>
+<li>dispatch_sync(queue, block)同步提交job<em> dispatch_async (queue, block) 异步提交job</em> dispatch_after(time, queue, block) 同步延迟提交job
+其中第一个参数类型是dispatch_queue_t，就是一个表示队列的数据结构<code>typedef struct dispatch_queue_s *dispatch_queue_t;</code>；block就是表示任务的Block<code>typedef void (^dispatch_block_t)( void);</code>。</li>
+</ul>
+
+
+<p>dispatch_async函数是异步非阻塞的，调用后会立刻返回，工作由系统在线程池中分配线程去执行工作。
+dispatch_sync和dispatch_after是阻塞式的，会一直等到添加的工作完成后才会返回。</p>
+
+<p>除了添加Block到Dispatch Queue，还有添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async_f(dispatch_queue_t queue,
+</span><span class='line'>               void *context,
+</span><span class='line'>               dispatch_function_t work);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中第三个参数就是个函数指针，即<code>typedef void (*dispatch_function_t)(void *);</code>；第二个参数是传给这个函数的参数。</p>
+
+<!--more-->
+
 
 <h3>Dispatch Queue</h3>
 
 <p>要添加工作到队列Dispatch Queue中，这个队列可以是串行或者并行的，并行队列会尽可能的并发执行其中的工作任务，而串行队列每次只能运行一个工作任务。</p>
-
-<!--more-->
-
 
 <p>目前GCD中有三种类型的Dispatch Queue：</p>
 
@@ -345,9 +532,7 @@ Block对象常见的循环引用问题如下：</p>
 </ul>
 
 
-<h3>添加工作任务</h3>
-
-<p>添加工作任务到队列也非常简单，调用函数dispatch_async()，两个参数，一个就是Dispatch Queue，另一个是一个包含工作的Block，就像本文开头的示例一样。dispatch_async函数是非阻塞的，调用后会立刻返回，工作由系统分配线程去执行工作。因此另一种常见的使用模式是：</p>
+<p>由于有这些种不同类型的队列，一种常见的使用模式是：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -363,25 +548,11 @@ Block对象常见的循环引用问题如下：</p>
 </span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
 
 
-<p>可以将一些耗时的工作添加到全局队列，让系统分配线程在后台中去做，完成后，再次调用GCD的主队列去完成UI相关的工作，这样做就不会因为大量的非UI相关工作加重主线程负担，加快UI事件响应。</p>
-
-<p>与dispatch_async对应的有一个dispatch_sync方法，它是阻塞式的，会一直等到添加的工作完成后才会返回。</p>
-
-<p>除了添加Block到Dispatch Queue，iOS 4之后新增了添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async_f(dispatch_queue_t queue,
-</span><span class='line'>               void *context,
-</span><span class='line'>               dispatch_function_t work);</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其中第三个参数就是个函数指针，即<code>typedef void (*dispatch_function_t)(void *);</code>；第二个参数是传给这个函数的参数。</p>
+<p>将一些耗时的工作添加到全局队列，让系统分配线程去做，工作完成后再次调用GCD的主线程队列去完成UI相关的工作，这样做就不会因为大量的非UI相关工作加重主线程负担，从而加快UI事件响应。</p>
 
 <h3>Dispatch Group</h3>
 
-<p>GCD确实非常简单好用，不过有些情况还是有点问题，例如：</p>
+<p>GCD确实非常简单好用，不过有些场景下还是有点问题，例如：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -411,7 +582,7 @@ Block对象常见的循环引用问题如下：</p>
 </span><span class='line'>[self doWorkOnArray:array];</span></code></pre></td></tr></table></div></figure>
 
 
-<p>问题是<code>[self doWorkOnArray:array];</code>原先是在全部数组各个成员的工作完成后才会执行的，现在由于dispatch_async是非阻塞的，<code>[self doWorkOnArray:array];</code>很有可能在各个成员的工作完成前就运行了，这明显不符合我们的目的。如果将dispatch_async改成dispatch_sync可以解决问题，但是和原来的方法一样失去了并行的好处，也没有意义了。</p>
+<p>问题是<code>[self doWorkOnArray:array];</code>原先是在全部数组各个成员的工作完成后才会执行的，现在由于dispatch_async是异步的，<code>[self doWorkOnArray:array];</code>很有可能在各个成员的工作完成前就开始运行，这明显不符合原先的语义。如果将dispatch_async改成dispatch_sync可以解决问题，但是和原来的方法一样没有并行处理数组，使用GCD也就没有意义了。</p>
 
 <p>针对这种情况，GCD提供了Dispatch Group可以将一组工作集合在一起，等待这组工作完成后再继续运行。dispatch_group_create函数可以用来创建这个Group：</p>
 
@@ -435,9 +606,9 @@ Block对象常见的循环引用问题如下：</p>
 </span><span class='line'>[self doWorkOnArray:array];</span></code></pre></td></tr></table></div></figure>
 
 
-<p>方法是不是很简单，将并发的工作用dispatch_group_async添加到一个Group和全局队列中，dispatch_group_wait会等待这些工作完成后再返回，这样你就可以再运行<code>[self doWorkOnArray:array];</code>。</p>
+<p>方法是不是很简单，将并发的工作用dispatch_group_async异步添加到一个Group和全局队列中，dispatch_group_wait会等待这些工作完成后再返回，这样你就可以再运行<code>[self doWorkOnArray:array];</code>。</p>
 
-<p>不过有点不好的是dispatch_group_wait会阻塞当前线程，如果当前是主线程岂不是不好，有更绝的：</p>
+<p>不过有点不好的是dispatch_group_wait会阻塞当前线程，如果当前是主线程岂不是不好，有更绝的dispatch_group_notify接口：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -463,6 +634,9 @@ Block对象常见的循环引用问题如下：</p>
 
 <p>dispatch_group_notify函数可以将这个Group完成后的工作也同样添加到队列中（如果是需要更新UI，这个队列也可以是主队列），总之这样做就完全不会阻塞当前线程了。</p>
 
+<p>Dispatch Group还有两个接口可以显式的告知group要添加block操作：
+dispatch_group_enter(group)和dispatch_group_leave(group)，这两个接口的调用数必须平衡，否则group就无法知道是不是处理完所有的Block了。</p>
+
 <h3>Dispatch Apply</h3>
 
 <p>如果就是要同步的执行对数组元素的逐个操作，GCD也提供了一个简便的dispatch_apply函数：</p>
@@ -479,18 +653,65 @@ Block对象常见的循环引用问题如下：</p>
 </span><span class='line'>[self doWorkOnArray:array];</span></code></pre></td></tr></table></div></figure>
 
 
-<p>要了解更全的接口，查看《Grand Central Dispatch (GCD) Reference》。</p>
+<h3>Dispatch Barrier</h3>
 
-<h3>其他有趣的特性</h3>
+<p>在使用dispatch_async异步提交时，是无法保证这些工作的执行顺序的，如果需要某些工作在某个工作完成后再执行，那么可以使用Dispatch Barrier接口来实现，barrier也有同步提交dispatch_barrier_async(queue, block)和异步提交dispatch_barrier_sync(queue, block)两种方式。例如：</p>
 
-<ul>
-<li>Dispatch Source</li>
-</ul>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async(queue, block1);
+</span><span class='line'>dispatch_async(queue, block2);
+</span><span class='line'>dispatch_barrier_async(queue, block3);
+</span><span class='line'>dispatch_async(queue, block4);
+</span><span class='line'>dispatch_async(queue, block5);</span></code></pre></td></tr></table></div></figure>
 
 
-<p>Run Loop有Input Source，GCD也同样支持一系列事件，就是监听事件发生后会执行一个Block形式的Handler。Dispatch Source支持的事件源类型有：Timer源、signal信号源、描述符(文件或者网络描述符)源、进程源、Port源、自定义源。当然有些源由于iOS系统原因肯定是无法使用的，例如进程源、Port源、、signal信号源。</p>
+<p>dispatch_barrier_async是异步的，调用后立刻返回，即使block3到了队列首部，也不会立刻执行，而是等到block1和block2的并行执行完成后才会执行block3，完成后再会并行运行block4和block5。注意这里的queue应该是一个并行队列，否则dispatch_barrier_async操作就失去了意义。</p>
 
-<p>举个自定义源的例子，假如我们在处理上面那个数组时要在UI中显示一个进度条：</p>
+<h3>Dispatch Source</h3>
+
+<p>Run Loop有Input Source，GCD也同样支持一系列事件监听和处理，GCD有一组Dispatch Source接口可以监听底层系统对象(例如文件描述符、网络描述符、Mach Port、Unix信号、VFS文件系统的vnode等)的事件，可以设置这些事件的处理函数，如果事件发生时，Dispatch Source就可以将事件的处理方法提交到队列中执行。</p>
+
+<p>dispatch_source_t是Dispatch Source的数据结构，使用dispatch_source_create(type, handle, mask, queue)来创建，第一个参数是source的类型：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#define DISPATCH_SOURCE_TYPE_DATA_ADD
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_DATA_OR
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_MACH_RECV
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_MACH_SEND
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_PROC
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_READ
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_SIGNAL
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_TIMER
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_VNODE
+</span><span class='line'>#define DISPATCH_SOURCE_TYPE_WRITE</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第二个参数handle和第三个参数mask与source的类型相关，有不同的含义，第四个参数是source绑定的queue，由于篇幅问题这些含义请参考《Grand Central Dispatch (GCD) Reference》。</p>
+
+<p>dispatch_source_set_event_handler(source, handler)接口可以添加source的处理方法handler，这里的handler是一个block。如果是dispatch_source_set_event_handler_f(source, handler)，这里的handler就是function。</p>
+
+<p>dispatch_source_cancel(source)接口可以异步取消一个source，取消后上面设置dispatch_source_set_event_handler的evnet handler就不会再执行。取消一个source时，如果之前使用dispatch_source_set_cancel_handler(source, handler)设置了一个取消时的处理block，那么这个block就会在取消source的时候提交至source关联的queue中去执行，可以用来清理资源。</p>
+
+<p>dispatch_source_get_data(source)接口用于返回source需要处理的数据，根据当初创建source类型不同有不同的含义，而且这个接口必须在event handler中调用，否则返回结果可能未定义。</p>
+
+<p>dispatch_source_get_handle(source)和dispatch_source_get_mask(source)接口分布用于获取当初创建source时的两个参数handle和mask。</p>
+
+<p>dispatch_source_merge_data(source, value)接口用于将一个value值合并到souce中，这个source的类型必须是DISPATCH_SOURCE_TYPE_DATA_ADD或者DISPATCH_SOURCE_TYPE_DATA_OR。</p>
+
+<p>下面举个source的例子，使用dispatch_source_get_data和dispatch_source_merge_data，假如我们在处理上面那个数组时要在UI中显示一个进度条：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -516,12 +737,11 @@ Block对象常见的循环引用问题如下：</p>
 </span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
 
 
-<p>dispatch source创建后是出于suspend状态的，必须使用dispatch_resume来恢复，dispatch_apply中每处理一个数组元素会调用dispatch_source_merge_data加1，那么这个source的事件handler就可以通过dispatch_source_get_data拿到source的数据。</p>
+<p>注意dispatch source创建后是处于suspend状态的，必须使用dispatch_resume来恢复，dispatch_apply中每处理一个数组元素会调用dispatch_source_merge_data加1，那么这个source的事件handler就可以通过dispatch_source_get_data拿到source的数据。</p>
 
-<ul>
-<li>单例</li>
-</ul>
+<h3>Dispatch Once</h3>
 
+<p>dispatch_once的意思是在App整个生命周期内运行并且只允许一次，类似于pthread库中的<a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/pthread_once.html">pthread_once</a>)。由于dispatch_once的调试非常困难，所以最好还是少用，单例应该是少数值得用的地方了。</p>
 
 <p>传统我们实现单例是这样：</p>
 
@@ -548,7 +768,7 @@ Block对象常见的循环引用问题如下：</p>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>这个的成本还是有点高，每次访问都会有同步锁，而GCD有个dispatch_once方法(类似于<a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/pthread_once.html">pthread_once</a>)可以保证只运行一次初始化：</p>
+<p>这个的成本还是有点高，每次访问都会有同步锁，使用dispatch_once可以保证只运行一次初始化：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -570,14 +790,183 @@ Block对象常见的循环引用问题如下：</p>
 </span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
 
 
-<p>需要注意dispatch_once_t最好使用全局变量或者是static的，否则可能导致无法确定的行为。由于dispatch_once的调试非常困难，所以最好还是少用，单例应该是少数值得用的地方了。</p>
+<p>需要注意dispatch_once_t最好使用全局变量或者是static的，否则可能导致无法确定的行为。</p>
+
+<h3>Dispatch Semaphore</h3>
+
+<p>和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create(value)用于创建一个信号量类型dispatch_semaphore_t，参数是long类型，表示信号量的初始值；dispatch_semaphore_signal(semaphore)用于通知信号量(增加一个信号量)；dispatch_semaphore_wait(semaphore, timeout)用于等待信号量(减少一个信号量)，第二个参数是超时时间，如果返回值小于0，会按照先后顺序等待其他信号量的通知。</p>
+
+<h3>管理GCD数据</h3>
+
+<p>所有GCD的对象同样是有引用计数的，如果引用计数为0就被释放，如果你不再需要所创建的GCD对象，就可以使用dispatch_release(object)将对象的引用计数减一；同样可以使用dispatch_retain(object)将对象的引用计数加一。注意由于全局和主线程队列对象都不需要去dispatch_release和dispatch_retain，即使调用了也没有作用。</p>
+
+<p>dispatch_suspend(queue)可以暂停一个GCD队列的执行，当然由于是block粒度的，如果调用dispatch_suspend时正好有队列中block正在执行，那么这些运行的block结束后不会有其他的block再被执行；同理dispatch_resume(queue)可以恢复一个GCD队列的运行。注意dispatch_suspend的调用数目需要和dispatch_resume数目保持平衡，因为dispatch_suspend是计数的，两次调用dispatch_suspend会设置队列的暂停数为2，必须再调用两次dispatch_resume才能让队列重新开始执行block。</p>
+
+<p>可以使用dispatch_set_context(object, context)给一个GCD对象设置一个关联的数据，第二个参数任何一个内存地址；dispatch_set_context(object)就是获得这个关联数据，这样可以方便传递各类上下文数据。</p>
+
+<p>本小节提到的GCD对象不单指队列dispatch_queue_t，是指在GCD中出现的各种类型，声明类型dispatch_object_t是个union：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>typedef union {
+</span><span class='line'>   struct dispatch_object_s *_do;
+</span><span class='line'>   struct dispatch_continuation_s *_dc;
+</span><span class='line'>   struct dispatch_queue_s *_dq;
+</span><span class='line'>   struct dispatch_queue_attr_s *_dqa;
+</span><span class='line'>   struct dispatch_group_s *_dg;
+</span><span class='line'>   struct dispatch_source_s *_ds;
+</span><span class='line'>   struct dispatch_source_attr_s *_dsa;
+</span><span class='line'>   struct dispatch_semaphore_s *_dsema;
+</span><span class='line'>   struct dispatch_data_s *_ddata;
+</span><span class='line'>   struct dispatch_io_s *_dchannel;
+</span><span class='line'>   struct dispatch_operation_s *_doperation;
+</span><span class='line'>   struct dispatch_fld_s *_dfld;
+</span><span class='line'>} dispatch_object_t </span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Dispatch Data 对象</h3>
+
+<p>GCD是基于C的接口，其内部处理数据是无法直接使用Objective-C的数据类型，如果要使用数据buffer时需要自己malloc一块内存空间来用，因此GCD提供了类似Objective-C中NSData的dispatch_data_t数据结构作为数据buffer。</p>
+
+<p>dispatch_data_t的类型dispatch_data_s的指针，使用dispatch_data_create(buffer, size, queue, destructor)可以创建一个dispatch_data_t，第一个参数是保存数据的内存地址，第二个参数size是数据字节大小，第三个参数queue提交destructor block的队列，第四个参数destructor是用于释放data的block，默认是DISPATCH_DATA_DESTRUCTOR_DEFAULT和DISPATCH_DATA_DESTRUCTOR_FREE，后者在buffer是使用malloc生成的缓冲区时使用。示例：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>void *buffer = malloc(length);
+</span><span class='line'>dispatch_data_t data = dispatch_data_create(buffer, length, NULL, DISPATCH_DATA_DESTRUCTOR_FREE);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果是从NSData转换为dispatch_data_t：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nsdata = [nsdata copy];
+</span><span class='line'>dispatch_queue_t queue = dispatch_get_global_queue(0, 0);
+</span><span class='line'>  return dispatch_data_create([nsdata bytes], [nsdata length], queue, ^{
+</span><span class='line'>      [nsdata release];
+</span><span class='line'>  });</span></code></pre></td></tr></table></div></figure>
+
+
+<p>与直接使用己malloc分配的连续内存空间不同，dispatch_data_t可以直接将两块数据用dispatch_data_create_concat(dataA, dataB)拼接起来，还可以用dispatch_data_create_subrange(data, offset, length)获取部分dispatch_data_t。</p>
+
+<p>如果反过来要访问一个dispatch_data_t对应的内存空间，就需要使用dispatch_data_create_map(data, buffer_ptr, size_ptr)接口，示例：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>const void *buffer;
+</span><span class='line'>size_t length;
+</span><span class='line'>dispatch_data_t tmpData = dispatch_data_create_map(data, &buffer, &length);
+</span><span class='line'>
+</span><span class='line'>//可以得到dispatch_data_t的内存空间地址和字节大小
+</span><span class='line'>//这里我们可以直接使用buffer指针对应的内存
+</span><span class='line'>//返回的tmpData是一个新的对应data连续内存空间的dispatch_data_t
+</span><span class='line'>
+</span><span class='line'>dispatch_release(tmpData);</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Dispatch I/O Channel</h3>
+
+<p>GCD提供的这组Dispatch I/O Channel接口用于异步处理基于文件和网络描述符的操作，可以用于文件和网络I/O操作。</p>
+
+<p>Dispatch IO Channel对象dispatch_io_t就是对一个文件或网络描述符的封装，使用dispatch_io_t dispatch_io_create(type, fd, queue, cleanup_hander)接口生成一个dispatch_io_t对象。第一个参数type表示channel的类型，有DISPATCH_IO_STREAM和DISPATCH_IO_RANDOM两种，分布表示流读写和随机读写；第二个参数fd是要操作的文件描述符；第三个参数queue是cleanup_hander提交需要的队列；第四个参数cleanup_hander是在系统释放该文件描述符时的回调。示例：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_io_t fileChannel = dispatch_io_create(DISPATCH_IO_STREAM, STDIN_FILENO, dispatch_get_global_queue(0, 0), ^(int error) {
+</span><span class='line'>        if(error)
+</span><span class='line'>            fprintf(stderr, "error from stdin: %d (%s)\n", error, strerror(error));
+</span><span class='line'>    });
+</span><span class='line'>    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>dispatch_io_close(channel, flag)可以将生成的channel关闭，第二个参数是关闭的选项，如果使用DISPATCH_IO_STOP (0x01)就会立刻中断当前channel的读写操作，关闭channel。如果使用的是0，那么会在正常读写结束后才会关闭channel。</p>
+
+<p>During a read or write operation, the channel uses the high- and low-water mark values to determine how often to enqueue the associated handler block. It enqueues the block when the number of bytes read or written is between these two values.</p>
+
+<p>在channel的读写操作中，channel会使用low_water和high_water值来决定读写了多大数据才会提交相应的数据处理block，可以dispatch_io_set_low_water(channel, low_water)和dispatch_io_set_high_water(channel, high_water)设置这两个值。</p>
+
+<p>Channel的异步读写操作使用接口dispatch_io_read(channel, offset, length, queue, io_handler)和dispatch_io_write(channel, offset, data, queue, io_handler)。dispatch_io_read接口参数分布表示channel，偏移量，字节大小，提交IO处理block的队列，IO处理block；dispatch_io_write接口参数分别表示channel，偏移量，数据(dispatch_data_t)，提交IO处理block的队列，IO处理block。其中io_handler的定义为<code>^(bool done, dispatch_data_t data, int error)()</code>。</p>
+
+<p>举个例子，将STDIN读到的数据写到STDERR：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_io_read(stdinChannel, 0, SIZE_MAX, dispatch_get_global_queue(0, 0), ^(bool done, dispatch_data_t data, int error) {
+</span><span class='line'>       if(data)
+</span><span class='line'>       {
+</span><span class='line'>           dispatch_io_write(stderrChannel, 0, data, dispatch_get_global_queue(0, 0), ^(bool done, dispatch_data_t data, int error) {});
+</span><span class='line'>       }
+</span><span class='line'>});
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>看起来使用上还挺麻烦的，需要创建Channel才能进行读写，因此GCD直接提供了两个方便异步读写文件描述符的接口(参数含义和channel IO的类似)：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>void dispatch_read(
+</span><span class='line'>   dispatch_fd_t fd,
+</span><span class='line'>   size_t length,
+</span><span class='line'>   dispatch_queue_t queue,
+</span><span class='line'>   void (^handler)(dispatch_data_t data, int error));
+</span><span class='line'>   
+</span><span class='line'>void dispatch_write(
+</span><span class='line'>   dispatch_fd_t fd,
+</span><span class='line'>   dispatch_data_t data,
+</span><span class='line'>   dispatch_queue_t queue,
+</span><span class='line'>   void (^handler)(dispatch_data_t data, int error));
+</span><span class='line'>   </span></code></pre></td></tr></table></div></figure>
+
+
+<h3>总结</h3>
+
+<p>GCD的API按功能分为：</p>
 
 <ul>
-<li>信号量Semaphore</li>
+<li>创建管理Queue<em> 提交Job</em> Dispatch Group<em> 管理Dispatch Object</em> 信号量Semaphore<em> 队列屏障Barrier</em> Dispatch Source<em> Queue Context数据</em> Dispatch I/O Channel* Dispatch Data 对象</li>
 </ul>
 
 
-<p>和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create用于创建，dispatch_semaphore_signal用于通知，dispatch_semaphore_wait用于等待。</p>
+<p>各组接口的详细说明还是参考《Grand Central Dispatch (GCD) Reference》。</p>
 
 <h3>参考资料</h3>
 
@@ -1437,7 +1826,7 @@ Block对象常见的循环引用问题如下：</p>
     <id>http://hrchen.com/2013/06/multi-threading-programming-of-ios-part-1</id>
     <content type="html"><![CDATA[<h3>前言</h3>
 
-<p>多线程的价值无需赘述，对于App性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种技术的细节。</p>
+<p>多线程的价值无需赘述，对于App性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种多线程技术的细节。</p>
 
 <p>对于pthread这种跨平台的多线程技术，这本<a href="http://www.amazon.com/Programming-POSIX-Threads-David-Butenhof/dp/0201633922/">Programming with POSIX Threads</a>做了详细介绍，不再提及。</p>
 
@@ -1562,7 +1951,7 @@ Block对象常见的循环引用问题如下：</p>
 
 <h3>Run Loop</h3>
 
-<p>Run Loop是个让人迷惑的概念，相关的介绍资料也很少，它的主要的特性如下：</p>
+<p>Run Loop本身并不具备并发执行的功能，但是和多线程开发息息相关，而且概念令人迷惑，相关的介绍资料也很少，它的主要的特性如下：</p>
 
 <ul>
 <li>每个线程都有一个Run Loop，主线程的Run Loop会在App运行时自动运行，子线程中需要手动运行。</li>
@@ -1572,7 +1961,23 @@ Block对象常见的循环引用问题如下：</p>
 </ul>
 
 
-<p>Run Loop如何运行呢？在上一节NSThread的入口函数中已经说明了一种NSRunLoop的使用场景，再看一例：</p>
+<h3>Run Loop接口</h3>
+
+<p>要操作Run Loop，Foundation层和Core Foundation层都有对应的接口可以操作Run Loop。</p>
+
+<p>Foundation层对应的是NSRunLoop:</p>
+
+<p><img src="http://hrchen.com/images/post/NSRunLoop.jpg"></p>
+
+<p>Core Foundation层对应的是CFRunLoopRef：</p>
+
+<p><img src="http://hrchen.com/images/post/CFRunLoopRef.jpg"></p>
+
+<p>两组接口差不多，不过功能上还是有许多区别的，例如CF层可以添加自定义Input Source事件源(CFRunLoopSourceRef)和Run Loop观察者Observer(CFRunLoopObserverRef)，很多类似功能的接口特性也是不一样的。</p>
+
+<h3>Run Loop运行</h3>
+
+<p>Run Loop如何运行呢？在上一节NSThread的入口函数中使用了一种NSRunLoop的使用场景，再看一例：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -1627,13 +2032,196 @@ Block对象常见的循环引用问题如下：</p>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>我们看到入口方法里创建了一个NSTimer，并且以NSDefaultRunLoopMode模式加入到当前子线程的NSRunLoop中，正常情况肯定会执行<code>-doOtherTask</code>方式法一次，然后再以NSDefaultRunLoopMode模式运行NSRunLoop，如果一次Timer事件触发处理后，这个Run Loop会返回吗？答案是不会。NSRunLoop的底层实现是CFRunLoop，具体内部实现不透明，你可以想象成一个循环，当没有事件触发时，你调用Run Loop的运行方法不会返回继续监听其他事件源，Run Loop会让子线程进入sleep等待状态而不是空转，只有当Timer Source或者Input Source事件发生时，子线程才会被唤醒，处理触发的事件，不过由于Timer source比较特殊，Timer Source事件发生处理后，<code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;</code>方法不会返回；而其他非Timer事件的触发处理会让这个Run Loop退出并返回YES。</p>
+<p>我们看到入口方法里创建了一个NSTimer，并且以NSDefaultRunLoopMode模式加入到当前子线程的NSRunLoop中。进入循环后肯定会执行<code>-doOtherTask</code>方式法一次，然后再以NSDefaultRunLoopMode模式运行NSRunLoop，如果一次Timer事件触发处理后，这个Run Loop会返回吗？答案是不会，Why？</p>
 
-<p>当你将子线程的Run Loop运行在一个特定模式时，如果该模式下没有事件源，运行Run Loop也会立刻返回NO。如果你添加一个Input Source，例如<code>[[NSRunLoop currentRunLoop] addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];</code>或者持有子线程的对象在这个子线程上运行方法，例如<code>[self performSelector:@selector(doThreadTask) onThread:thread withObject:nil waitUntilDone:NO];</code>就会让这个Run Loop进入等待状态，即<code>-runMode:BeforDate</code>处于阻塞状态不返回。</p>
+<p>NSRunLoop的底层是由CFRunLoopRef实现的，你可以想象成一个循环或者类似Linux下select或者epoll，当没有事件触发时，你调用的Run Loop运行方法不会立刻返回，它会持续监听其他事件源，如果需要Run Loop会让子线程进入sleep等待状态而不是空转，只有当Timer Source或者Input Source事件发生时，子线程才会被唤醒，然后处理触发的事件，然而由于Timer source比较特殊，Timer Source事件发生处理后，Run Loop运行方法<code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;</code>也不会返回；而其他非Timer事件的触发处理会让这个Run Loop退出并返回YES。当Run Loop运行在一个特定模式时，如果该模式下没有事件源，运行Run Loop会立刻返回NO。</p>
+
+<p>NSRunLoop的运行接口：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="c1">//运行 NSRunLoop，运行模式为默认的NSDefaultRunLoopMode模式，没有超时限制</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">run</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//运行 NSRunLoop: 参数为运行模式、时间期限，返回值为YES表示是处理事件后返回的，NO表示是超时或者停止运行导致返回的</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">runMode:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">mode</span> <span class="nf">beforeDate:</span><span class="p">(</span><span class="n">NSDate</span> <span class="o">*</span><span class="p">)</span><span class="nv">limitDate</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式 </span>
+</span><span class='line'><span class="k">-</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">runUntilDate:</span><span class="p">(</span><span class="n">NSDate</span> <span class="o">*</span><span class="p">)</span><span class="nv">limitDate</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>CFRunLoopRef的运行接口：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="c1">//运行 CFRunLoopRef</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">CFRunLoopRun</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//运行 CFRunLoopRef: 参数为运行模式、时间和是否在处理Input Source后退出标志，返回值是exit原因</span>
+</span><span class='line'><span class="n">SInt32</span> <span class="nf">CFRunLoopRunInMode</span> <span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">seconds</span><span class="p">,</span> <span class="n">returnAfterSourceHandled</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//停止运行 CFRunLoopRef</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">CFRunLoopStop</span><span class="p">(</span> <span class="n">CFRunLoopRef</span> <span class="n">rl</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//唤醒 CFRunLoopRef</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">CFRunLoopWakeUp</span> <span class="p">(</span> <span class="n">CFRunLoopRef</span> <span class="n">rl</span> <span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>详细讲解下NSRunLoop的三个运行接口：</p>
+
+<ul>
+<li><code>- (void)run;</code> 无条件运行</li>
+</ul>
+
+
+<p>不建议使用，因为这个接口会导致Run Loop永久性的运行在NSDefaultRunLoopMode模式，即使使用<code>CFRunLoopStop(runloopRef);</code>也无法停止Run Loop的运行，那么这个子线程就无法停止，只能永久运行下去。</p>
+
+<ul>
+<li><code>- (void)runUntilDate:(NSDate *)limitDate;</code> 有一个超时时间限制</li>
+</ul>
+
+
+<p>比上面的接口好点，有个超时时间，可以控制每次Run Loop的运行时间，也是运行在NSDefaultRunLoopMode模式。这个方法运行Run Loop一段时间会退出给你检查运行条件的机会，如果需要可以再次运行Run Loop。注意<code>CFRunLoopStop(runloopRef);</code>也无法停止Run Loop的运行，因此最好自己设置一个合理的Run Loop运行时间。示例：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">Done</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span> <span class="nl">runUntilDate:</span><span class="p">[</span><span class="n">NSDate</span>
+</span><span class='line'>                <span class="nl">dateWithTimeIntervalSinceNow:</span><span class="mi">10</span><span class="p">]];</span>
+</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exiting runloop.........:&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;</code> 有一个超时时间限制，而且设置运行模式</li>
+</ul>
+
+
+<p>这个接口在非Timer事件触发、显式的用CFRunLoopStop停止Run Loop、到达limitDate后会退出返回。如果仅是Timer事件触发并不会让Run Loop退出返回；如果是PerfromSelector***事件或者其他Input Source事件触发处理后，Run Loop会退出返回YES。示例：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">Done</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="kt">BOOL</span> <span class="n">ret</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span> <span class="nl">runMode:</span><span class="n">NSDefaultRunLoopMode</span>
+</span><span class='line'>                                        <span class="nl">beforeDate:</span><span class="p">[</span><span class="n">NSDate</span> <span class="n">distantFuture</span><span class="p">]];</span>
+</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exiting runloop.........: %d&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>那么如何知道一个Run Loop是因为什么原因exit退出的呢？NSRunLoop中没有接口可以知道，而需要通过Core Foundation的接口来运行CFRunLoopRef，NSRunLoop其实就是CFRunLoopRef的二次封装。使用CFRunLoop的接口(C的接口)来运行Run Loop，有两个接口：</p>
+
+<ul>
+<li><code>void CFRunLoopRun(void);</code></li>
+</ul>
+
+
+<p>运行在默认的kCFRunLoopDefaultMode模式下，直到使用CFRunLoopStop接口停止这个Run Loop，或者Run Loop的所有事件源都被删除。</p>
+
+<ul>
+<li><code>SInt32 CFRunLoopRunInMode(CFStringRef mode, CFTimeInterval seconds, Boolean returnAfterSourceHandled);</code></li>
+</ul>
+
+
+<p>第一个参数是指RunLoop运行的模式（例如kCFRunLoopDefaultMode或者kCFRunLoopCommonModes），第二个参数是运行时间，第三个参数是是否在处理事件后让Run Loop退出返回。 示例：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">self</span><span class="p">.</span><span class="n">isCancelled</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="n">self</span> <span class="n">doOtherTask</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">SInt32</span> <span class="n">result</span> <span class="o">=</span> <span class="n">CFRunLoopRunInMode</span><span class="p">(</span><span class="n">kCFRunLoopDefaultMode</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">YES</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">kCFRunLoopRunStopped</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="p">[</span><span class="n">self</span> <span class="n">cancel</span><span class="p">];</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exit run loop.........: %ld&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果Run Loop退出返回后，返回值是SInt32类型(signed long)，表明Run Loop返回的原因，目前有四种：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">enum</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">kCFRunLoopRunFinished</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="c1">//Run Loop结束，没有Timer或者其他Input Source</span>
+</span><span class='line'>    <span class="n">kCFRunLoopRunStopped</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="c1">//Run Loop被停止，使用CFRunLoopStop停止Run Loop</span>
+</span><span class='line'>    <span class="n">kCFRunLoopRunTimedOut</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="c1">//Run Loop超时</span>
+</span><span class='line'>    <span class="n">kCFRunLoopRunHandledSource</span> <span class="o">=</span> <span class="mi">4</span> <span class="c1">////Run Loop处理完事件，注意Timer事件的触发是不会让Run Loop退出返回的，即使CFRunLoopRunInMode的第三个参数是YES也不行</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意：Run Loop是可以嵌套调用的(就像NSAutoreleasePool)，例如一个Run Loop运行过程中一个事件触发后，那么在触发方法里可以再运行当前子线程的Run Loop，然后由这个Run Loop等待其他事件触发。不过这种嵌套Run Loop调用方式我用的比较少。</p>
+
+<p>以上Run Loop运行方法参考本文最后的Sample Code自行尝试。</p>
+
+<h3>Run Loop的运行模式Mode</h3>
+
+<p>iOS下Run Loop的主要运行模式mode有：</p>
+
+<p>1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。</p>
+
+<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。例如在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。默认情况下NSRunLoopCommonModes包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。注意：让Run Loop运行在NSRunLoopCommonModes下是没有意义的，因为一个时刻Run Loop只能运行在一个特定模式下，而不可能是个模式集合。</p>
+
+<p>3) UITrackingRunLoopMode: 用于跟踪触摸事件触发的模式（例如UIScrollView上下滚动），主线程当触摸事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。</p>
+
+<p>4) 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。</p>
+
+<p>CF层下的主要模式有：</p>
+
+<p>1) kCFRunLoopDefaultMode: CF层的NSDefaultRunLoopMode
+2) kCFRunLoopCommonModes: CF层的NSRunLoopCommonModes，同样可以利用CFRunLoopAddCommonMode添加自定义的模式。
+3) 自定义Mode: 一样可以自定义，不过是CFStringRef类型而已。</p>
+
+<p>Run Loop运行时只能以一种固定的模式运行，只会监控这个模式下添加的Timer Source和Input Source，如果这个模式下没有相应的事件源，Run Loop的运行也会立刻返回的。注意Run Loop不能在运行在NSRunLoopCommonModes模式，因为NSRunLoopCommonModes其实是个模式集合，而不是一个具体的模式，我可以在添加事件源的时候使用NSRunLoopCommonModes，只要Run Loop运行在NSRunLoopCommonModes中任何一个模式，这个事件源都可以被触发。</p>
 
 <h3>Run Loop的事件源</h3>
 
-<p>归根结底，Run Loop就是个处理事件的Loop，可以让你添加Timer和其他Input Source等各种事件源，如果事件源没有发生时，Run Loop就会让线程进入asleep状态，而事件源发生时就会唤醒休眠的(asleep)的子线程来处理事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。</p>
+<p>归根结底，Run Loop就是个处理事件的Loop，可以添加Timer和其他Input Source等各种事件源，如果事件源没有发生时，Run Loop就可能让线程进入asleep状态，而事件源发生时就会唤醒休眠的(asleep)的子线程来处理事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。</p>
 
 <p><img src="http://hrchen.com/images/post/runloop_source.jpg"></p>
 
@@ -1641,7 +2229,7 @@ Block对象常见的循环引用问题如下：</p>
 
 <p>细分下Run Loop的事件源：</p>
 
-<p>1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是<code>scheduledTimerWith****</code>开头生成的Timer会自动帮你加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用<code>-addTimer:forMode</code>添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。</p>
+<p>1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是<code>scheduledTimerWith****</code>开头生成的Timer会自动帮你以默认NSDefaultRunLoopMode模式加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用<code>-addTimer:forMode</code>添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。</p>
 
 <p>2) Input Source中的-performSelector:***API调用簇方法，有以下这些接口：</p>
 
@@ -1690,138 +2278,9 @@ Block对象常见的循环引用问题如下：</p>
 
 <p>具体实现参见本文最后的Sample Code。</p>
 
-<h3>Run Loop的运行</h3>
-
-<p>之前说的Run Loop的运行方式感觉有点绕，容易晕，而且《Threading Programming Guide》可能是最初Mac下的Run Loop，iOS下情况有一些不一样。在此总结NSRunLoop的三个运行接口：</p>
-
-<ul>
-<li><code>- (void)run;</code> 无条件运行</li>
-</ul>
-
-
-<p>不建议使用，因为这个接口会导致Run Loop永久性的运行在NSDefaultRunLoopMode模式，即使使用<code>CFRunLoopStop(CFRunLoopGetCurrent());</code>也无法停止Run Loop的运行，那么这个子线程就无法停止，只能永久运行下去。</p>
-
-<ul>
-<li><code>- (void)runUntilDate:(NSDate *)limitDate;</code> 有一个超时时间限制</li>
-</ul>
-
-
-<p>比上面的接口好点，有个超时时间，可以控制每次Run Loop的运行时间，也是运行在NSDefaultRunLoopMode模式。这个方法运行Run Loop一段时间会退出给你检查运行条件的机会，如果需要可以再次运行Run Loop。注意<code>CFRunLoopStop(CFRunLoopGetCurrent());</code>也无法停止Run Loop的运行，因此最好自己设置一个合理的Run Loop运行时间。示例：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">Done</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>    <span class="p">[[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span> <span class="nl">runUntilDate:</span><span class="p">[</span><span class="n">NSDate</span> <span class="nl">dateWithTimeIntervalSinceNow:</span><span class="mi">10</span><span class="p">]];</span>
-</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exiting runloop.........:&quot;</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;</code> 有一个超时时间限制，而且设置运行模式</li>
-</ul>
-
-
-<p>这个接口在非Timer事件触发、显式的用CFRunLoopStop停止Run Loop、到达limitDate后会退出返回。如果仅是Timer事件触发并不会让Run Loop退出返回；如果是PerfromSelector***事件或者其他Input Source事件触发处理后，Run Loop会退出返回YES。示例：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">Done</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>    <span class="kt">BOOL</span> <span class="n">ret</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span> <span class="nl">runMode:</span><span class="n">NSDefaultRunLoopMode</span>
-</span><span class='line'>                                      <span class="nl">beforeDate:</span><span class="p">[</span><span class="n">NSDate</span> <span class="n">distantFuture</span><span class="p">]];</span>
-</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exiting runloop.........: %d&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>那么如何知道一个Run Loop是因为什么原因exit返回的呢？NSRunLoop没有接口可以知道，而需要通过Core Foundation的接口来运行CFRunLoopRef，NSRunLoop其实就是CFRunLoopRef的二次封装。使用CFRunLoop的接口(C的接口)来运行Run Loop，有两个接口：</p>
-
-<ul>
-<li><code>void CFRunLoopRun(void);</code></li>
-</ul>
-
-
-<p>运行在默认的kCFRunLoopDefaultMode模式下，直到使用CFRunLoopStop接口停止这个Run Loop，或者Run Loop的所有事件源都被删除。</p>
-
-<ul>
-<li><code>SInt32 CFRunLoopRunInMode(CFStringRef mode, CFTimeInterval seconds, Boolean returnAfterSourceHandled);</code></li>
-</ul>
-
-
-<p>第一个参数是指RunLoop运行的模式（例如kCFRunLoopDefaultMode或者kCFRunLoopCommonModes），第二个参数是运行时间，第三个参数是是否在处理事件后让Run Loop退出返回。 示例：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">self</span><span class="p">.</span><span class="n">isCancelled</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>    <span class="p">[</span><span class="n">self</span> <span class="n">doOtherTask</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">SInt32</span> <span class="n">result</span> <span class="o">=</span> <span class="n">CFRunLoopRunInMode</span><span class="p">(</span><span class="n">kCFRunLoopDefaultMode</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">YES</span><span class="p">);</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">kCFRunLoopRunStopped</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">{</span>
-</span><span class='line'>        <span class="p">[</span><span class="n">self</span> <span class="n">cancel</span><span class="p">];</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exit run loop.........: %ld&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>如果Run Loop退出返回后，返回值是SInt32类型，就是个signed long，表明Run Loop返回的原因，目前有四种：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">enum</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">kCFRunLoopRunFinished</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="c1">//Run Loop结束，没有Timer或者其他Input Source</span>
-</span><span class='line'>    <span class="n">kCFRunLoopRunStopped</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="c1">//Run Loop被停止，使用CFRunLoopStop停止Run Loop</span>
-</span><span class='line'>    <span class="n">kCFRunLoopRunTimedOut</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="c1">//Run Loop超时</span>
-</span><span class='line'>    <span class="n">kCFRunLoopRunHandledSource</span> <span class="o">=</span> <span class="mi">4</span> <span class="c1">////Run Loop处理完事件，注意Timer事件的触发是不会让Run Loop退出返回的，即使CFRunLoopRunInMode的第三个参数是YES也不行</span>
-</span><span class='line'><span class="p">};</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>注意：Run Loop是可以递归调用的，例如一个Run Loop运行过程中一个事件触发后，那么在触发方法里可以再运行当前子线程的Run Loop，然后由这个Run Loop等待其他事件触发。不过这种Run Loop调用方式我用的比较少。</p>
-
-<p>以上Run Loop运行方法参考本文最后的Sample Code自行尝试。</p>
-
-<h3>Run Loop的运行模式Mode</h3>
-
-<p>iOS下Run Loop的主要运行模式mode有：</p>
-
-<p>1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。</p>
-
-<p>This is a configurable group of commonly used modes. Associating an input source with this mode also associates it with each of the modes in the group.</p>
-
-<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。例如在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。默认情况下NSRunLoopCommonModes包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。注意：让Run Loop运行在NSRunLoopCommonModes下是没有意义的，因为一个时刻Run Loop只能运行在一个特定模式下，而不可能是个模式集合。</p>
-
-<p>3) UITrackingRunLoopMode: 用于跟踪触摸事件触发的模式（例如UIScrollView上下滚动），主线程当触摸事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。</p>
-
-<p>4) 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。</p>
-
 <h3>Run Loop的Observer</h3>
 
-<p>可以定义一个Run Loop的观察者在Run Loop进入以下某个状态时得到通知：</p>
+<p>Core Foundation层的接口可以定义一个Run Loop的观察者在Run Loop进入以下某个状态时得到通知：</p>
 
 <ul>
 <li>Run loop的进入</li>

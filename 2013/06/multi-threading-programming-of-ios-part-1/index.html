@@ -88,7 +88,7 @@
 	<h1 class="title" itemprop="name">iOS多线程编程Part 1/3 - NSThread & Run Loop</h1>
 	<div class="entry-content" itemprop="articleBody"><h3>前言</h3>
 
-<p>多线程的价值无需赘述，对于App性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种技术的细节。</p>
+<p>多线程的价值无需赘述，对于App性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种多线程技术的细节。</p>
 
 <p>对于pthread这种跨平台的多线程技术，这本<a href="http://www.amazon.com/Programming-POSIX-Threads-David-Butenhof/dp/0201633922/">Programming with POSIX Threads</a>做了详细介绍，不再提及。</p>
 
@@ -213,7 +213,7 @@
 
 <h3>Run Loop</h3>
 
-<p>Run Loop是个让人迷惑的概念，相关的介绍资料也很少，它的主要的特性如下：</p>
+<p>Run Loop本身并不具备并发执行的功能，但是和多线程开发息息相关，而且概念令人迷惑，相关的介绍资料也很少，它的主要的特性如下：</p>
 
 <ul>
 <li>每个线程都有一个Run Loop，主线程的Run Loop会在App运行时自动运行，子线程中需要手动运行。</li>
@@ -223,7 +223,23 @@
 </ul>
 
 
-<p>Run Loop如何运行呢？在上一节NSThread的入口函数中已经说明了一种NSRunLoop的使用场景，再看一例：</p>
+<h3>Run Loop接口</h3>
+
+<p>要操作Run Loop，Foundation层和Core Foundation层都有对应的接口可以操作Run Loop。</p>
+
+<p>Foundation层对应的是NSRunLoop:</p>
+
+<p><img src="/images/post/NSRunLoop.jpg"></p>
+
+<p>Core Foundation层对应的是CFRunLoopRef：</p>
+
+<p><img src="/images/post/CFRunLoopRef.jpg"></p>
+
+<p>两组接口差不多，不过功能上还是有许多区别的，例如CF层可以添加自定义Input Source事件源(CFRunLoopSourceRef)和Run Loop观察者Observer(CFRunLoopObserverRef)，很多类似功能的接口特性也是不一样的。</p>
+
+<h3>Run Loop运行</h3>
+
+<p>Run Loop如何运行呢？在上一节NSThread的入口函数中使用了一种NSRunLoop的使用场景，再看一例：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -278,13 +294,196 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>我们看到入口方法里创建了一个NSTimer，并且以NSDefaultRunLoopMode模式加入到当前子线程的NSRunLoop中，正常情况肯定会执行<code>-doOtherTask</code>方式法一次，然后再以NSDefaultRunLoopMode模式运行NSRunLoop，如果一次Timer事件触发处理后，这个Run Loop会返回吗？答案是不会。NSRunLoop的底层实现是CFRunLoop，具体内部实现不透明，你可以想象成一个循环，当没有事件触发时，你调用Run Loop的运行方法不会返回继续监听其他事件源，Run Loop会让子线程进入sleep等待状态而不是空转，只有当Timer Source或者Input Source事件发生时，子线程才会被唤醒，处理触发的事件，不过由于Timer source比较特殊，Timer Source事件发生处理后，<code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;</code>方法不会返回；而其他非Timer事件的触发处理会让这个Run Loop退出并返回YES。</p>
+<p>我们看到入口方法里创建了一个NSTimer，并且以NSDefaultRunLoopMode模式加入到当前子线程的NSRunLoop中。进入循环后肯定会执行<code>-doOtherTask</code>方式法一次，然后再以NSDefaultRunLoopMode模式运行NSRunLoop，如果一次Timer事件触发处理后，这个Run Loop会返回吗？答案是不会，Why？</p>
 
-<p>当你将子线程的Run Loop运行在一个特定模式时，如果该模式下没有事件源，运行Run Loop也会立刻返回NO。如果你添加一个Input Source，例如<code>[[NSRunLoop currentRunLoop] addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];</code>或者持有子线程的对象在这个子线程上运行方法，例如<code>[self performSelector:@selector(doThreadTask) onThread:thread withObject:nil waitUntilDone:NO];</code>就会让这个Run Loop进入等待状态，即<code>-runMode:BeforDate</code>处于阻塞状态不返回。</p>
+<p>NSRunLoop的底层是由CFRunLoopRef实现的，你可以想象成一个循环或者类似Linux下select或者epoll，当没有事件触发时，你调用的Run Loop运行方法不会立刻返回，它会持续监听其他事件源，如果需要Run Loop会让子线程进入sleep等待状态而不是空转，只有当Timer Source或者Input Source事件发生时，子线程才会被唤醒，然后处理触发的事件，然而由于Timer source比较特殊，Timer Source事件发生处理后，Run Loop运行方法<code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;</code>也不会返回；而其他非Timer事件的触发处理会让这个Run Loop退出并返回YES。当Run Loop运行在一个特定模式时，如果该模式下没有事件源，运行Run Loop会立刻返回NO。</p>
+
+<p>NSRunLoop的运行接口：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="c1">//运行 NSRunLoop，运行模式为默认的NSDefaultRunLoopMode模式，没有超时限制</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">run</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//运行 NSRunLoop: 参数为运行模式、时间期限，返回值为YES表示是处理事件后返回的，NO表示是超时或者停止运行导致返回的</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">runMode:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">mode</span> <span class="nf">beforeDate:</span><span class="p">(</span><span class="n">NSDate</span> <span class="o">*</span><span class="p">)</span><span class="nv">limitDate</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式 </span>
+</span><span class='line'><span class="k">-</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">runUntilDate:</span><span class="p">(</span><span class="n">NSDate</span> <span class="o">*</span><span class="p">)</span><span class="nv">limitDate</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>CFRunLoopRef的运行接口：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="c1">//运行 CFRunLoopRef</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">CFRunLoopRun</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//运行 CFRunLoopRef: 参数为运行模式、时间和是否在处理Input Source后退出标志，返回值是exit原因</span>
+</span><span class='line'><span class="n">SInt32</span> <span class="nf">CFRunLoopRunInMode</span> <span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">seconds</span><span class="p">,</span> <span class="n">returnAfterSourceHandled</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//停止运行 CFRunLoopRef</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">CFRunLoopStop</span><span class="p">(</span> <span class="n">CFRunLoopRef</span> <span class="n">rl</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//唤醒 CFRunLoopRef</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">CFRunLoopWakeUp</span> <span class="p">(</span> <span class="n">CFRunLoopRef</span> <span class="n">rl</span> <span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>详细讲解下NSRunLoop的三个运行接口：</p>
+
+<ul>
+<li><code>- (void)run;</code> 无条件运行</li>
+</ul>
+
+
+<p>不建议使用，因为这个接口会导致Run Loop永久性的运行在NSDefaultRunLoopMode模式，即使使用<code>CFRunLoopStop(runloopRef);</code>也无法停止Run Loop的运行，那么这个子线程就无法停止，只能永久运行下去。</p>
+
+<ul>
+<li><code>- (void)runUntilDate:(NSDate *)limitDate;</code> 有一个超时时间限制</li>
+</ul>
+
+
+<p>比上面的接口好点，有个超时时间，可以控制每次Run Loop的运行时间，也是运行在NSDefaultRunLoopMode模式。这个方法运行Run Loop一段时间会退出给你检查运行条件的机会，如果需要可以再次运行Run Loop。注意<code>CFRunLoopStop(runloopRef);</code>也无法停止Run Loop的运行，因此最好自己设置一个合理的Run Loop运行时间。示例：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">Done</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span> <span class="nl">runUntilDate:</span><span class="p">[</span><span class="n">NSDate</span>
+</span><span class='line'>                <span class="nl">dateWithTimeIntervalSinceNow:</span><span class="mi">10</span><span class="p">]];</span>
+</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exiting runloop.........:&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;</code> 有一个超时时间限制，而且设置运行模式</li>
+</ul>
+
+
+<p>这个接口在非Timer事件触发、显式的用CFRunLoopStop停止Run Loop、到达limitDate后会退出返回。如果仅是Timer事件触发并不会让Run Loop退出返回；如果是PerfromSelector***事件或者其他Input Source事件触发处理后，Run Loop会退出返回YES。示例：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">Done</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="kt">BOOL</span> <span class="n">ret</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span> <span class="nl">runMode:</span><span class="n">NSDefaultRunLoopMode</span>
+</span><span class='line'>                                        <span class="nl">beforeDate:</span><span class="p">[</span><span class="n">NSDate</span> <span class="n">distantFuture</span><span class="p">]];</span>
+</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exiting runloop.........: %d&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>那么如何知道一个Run Loop是因为什么原因exit退出的呢？NSRunLoop中没有接口可以知道，而需要通过Core Foundation的接口来运行CFRunLoopRef，NSRunLoop其实就是CFRunLoopRef的二次封装。使用CFRunLoop的接口(C的接口)来运行Run Loop，有两个接口：</p>
+
+<ul>
+<li><code>void CFRunLoopRun(void);</code></li>
+</ul>
+
+
+<p>运行在默认的kCFRunLoopDefaultMode模式下，直到使用CFRunLoopStop接口停止这个Run Loop，或者Run Loop的所有事件源都被删除。</p>
+
+<ul>
+<li><code>SInt32 CFRunLoopRunInMode(CFStringRef mode, CFTimeInterval seconds, Boolean returnAfterSourceHandled);</code></li>
+</ul>
+
+
+<p>第一个参数是指RunLoop运行的模式（例如kCFRunLoopDefaultMode或者kCFRunLoopCommonModes），第二个参数是运行时间，第三个参数是是否在处理事件后让Run Loop退出返回。 示例：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">self</span><span class="p">.</span><span class="n">isCancelled</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="n">self</span> <span class="n">doOtherTask</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">SInt32</span> <span class="n">result</span> <span class="o">=</span> <span class="n">CFRunLoopRunInMode</span><span class="p">(</span><span class="n">kCFRunLoopDefaultMode</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">YES</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">kCFRunLoopRunStopped</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="p">[</span><span class="n">self</span> <span class="n">cancel</span><span class="p">];</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exit run loop.........: %ld&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果Run Loop退出返回后，返回值是SInt32类型(signed long)，表明Run Loop返回的原因，目前有四种：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">enum</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">kCFRunLoopRunFinished</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="c1">//Run Loop结束，没有Timer或者其他Input Source</span>
+</span><span class='line'>    <span class="n">kCFRunLoopRunStopped</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="c1">//Run Loop被停止，使用CFRunLoopStop停止Run Loop</span>
+</span><span class='line'>    <span class="n">kCFRunLoopRunTimedOut</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="c1">//Run Loop超时</span>
+</span><span class='line'>    <span class="n">kCFRunLoopRunHandledSource</span> <span class="o">=</span> <span class="mi">4</span> <span class="c1">////Run Loop处理完事件，注意Timer事件的触发是不会让Run Loop退出返回的，即使CFRunLoopRunInMode的第三个参数是YES也不行</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意：Run Loop是可以嵌套调用的(就像NSAutoreleasePool)，例如一个Run Loop运行过程中一个事件触发后，那么在触发方法里可以再运行当前子线程的Run Loop，然后由这个Run Loop等待其他事件触发。不过这种嵌套Run Loop调用方式我用的比较少。</p>
+
+<p>以上Run Loop运行方法参考本文最后的Sample Code自行尝试。</p>
+
+<h3>Run Loop的运行模式Mode</h3>
+
+<p>iOS下Run Loop的主要运行模式mode有：</p>
+
+<p>1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。</p>
+
+<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。例如在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。默认情况下NSRunLoopCommonModes包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。注意：让Run Loop运行在NSRunLoopCommonModes下是没有意义的，因为一个时刻Run Loop只能运行在一个特定模式下，而不可能是个模式集合。</p>
+
+<p>3) UITrackingRunLoopMode: 用于跟踪触摸事件触发的模式（例如UIScrollView上下滚动），主线程当触摸事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。</p>
+
+<p>4) 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。</p>
+
+<p>CF层下的主要模式有：</p>
+
+<p>1) kCFRunLoopDefaultMode: CF层的NSDefaultRunLoopMode
+2) kCFRunLoopCommonModes: CF层的NSRunLoopCommonModes，同样可以利用CFRunLoopAddCommonMode添加自定义的模式。
+3) 自定义Mode: 一样可以自定义，不过是CFStringRef类型而已。</p>
+
+<p>Run Loop运行时只能以一种固定的模式运行，只会监控这个模式下添加的Timer Source和Input Source，如果这个模式下没有相应的事件源，Run Loop的运行也会立刻返回的。注意Run Loop不能在运行在NSRunLoopCommonModes模式，因为NSRunLoopCommonModes其实是个模式集合，而不是一个具体的模式，我可以在添加事件源的时候使用NSRunLoopCommonModes，只要Run Loop运行在NSRunLoopCommonModes中任何一个模式，这个事件源都可以被触发。</p>
 
 <h3>Run Loop的事件源</h3>
 
-<p>归根结底，Run Loop就是个处理事件的Loop，可以让你添加Timer和其他Input Source等各种事件源，如果事件源没有发生时，Run Loop就会让线程进入asleep状态，而事件源发生时就会唤醒休眠的(asleep)的子线程来处理事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。</p>
+<p>归根结底，Run Loop就是个处理事件的Loop，可以添加Timer和其他Input Source等各种事件源，如果事件源没有发生时，Run Loop就可能让线程进入asleep状态，而事件源发生时就会唤醒休眠的(asleep)的子线程来处理事件。Run Loop的事件源事件源分两类：Timer Source和Input Source(包括-performSelector:***API调用簇，Port Input Source、自定义Input Source)。</p>
 
 <p><img src="/images/post/runloop_source.jpg"></p>
 
@@ -292,7 +491,7 @@
 
 <p>细分下Run Loop的事件源：</p>
 
-<p>1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是<code>scheduledTimerWith****</code>开头生成的Timer会自动帮你加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用<code>-addTimer:forMode</code>添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。</p>
+<p>1) Timer Souce就是创建Timer添加到Run Loop中，没啥好说的，Cocoa或者Core Foundation都有相应接口实现。需要注意的是<code>scheduledTimerWith****</code>开头生成的Timer会自动帮你以默认NSDefaultRunLoopMode模式加载到当前的Run Loop中，而其他接口生成的Timer则需要你手动使用<code>-addTimer:forMode</code>添加到Run Loop中。需要额外注意的是Timer的触发不会让Run Loop返回。(Timer sources deliver events to their handler routines but do not cause the run loop to exit.) 具体实验可以看下面的Sample Code。</p>
 
 <p>2) Input Source中的-performSelector:***API调用簇方法，有以下这些接口：</p>
 
@@ -341,138 +540,9 @@
 
 <p>具体实现参见本文最后的Sample Code。</p>
 
-<h3>Run Loop的运行</h3>
-
-<p>之前说的Run Loop的运行方式感觉有点绕，容易晕，而且《Threading Programming Guide》可能是最初Mac下的Run Loop，iOS下情况有一些不一样。在此总结NSRunLoop的三个运行接口：</p>
-
-<ul>
-<li><code>- (void)run;</code> 无条件运行</li>
-</ul>
-
-
-<p>不建议使用，因为这个接口会导致Run Loop永久性的运行在NSDefaultRunLoopMode模式，即使使用<code>CFRunLoopStop(CFRunLoopGetCurrent());</code>也无法停止Run Loop的运行，那么这个子线程就无法停止，只能永久运行下去。</p>
-
-<ul>
-<li><code>- (void)runUntilDate:(NSDate *)limitDate;</code> 有一个超时时间限制</li>
-</ul>
-
-
-<p>比上面的接口好点，有个超时时间，可以控制每次Run Loop的运行时间，也是运行在NSDefaultRunLoopMode模式。这个方法运行Run Loop一段时间会退出给你检查运行条件的机会，如果需要可以再次运行Run Loop。注意<code>CFRunLoopStop(CFRunLoopGetCurrent());</code>也无法停止Run Loop的运行，因此最好自己设置一个合理的Run Loop运行时间。示例：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">Done</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>    <span class="p">[[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span> <span class="nl">runUntilDate:</span><span class="p">[</span><span class="n">NSDate</span> <span class="nl">dateWithTimeIntervalSinceNow:</span><span class="mi">10</span><span class="p">]];</span>
-</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exiting runloop.........:&quot;</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>- (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;</code> 有一个超时时间限制，而且设置运行模式</li>
-</ul>
-
-
-<p>这个接口在非Timer事件触发、显式的用CFRunLoopStop停止Run Loop、到达limitDate后会退出返回。如果仅是Timer事件触发并不会让Run Loop退出返回；如果是PerfromSelector***事件或者其他Input Source事件触发处理后，Run Loop会退出返回YES。示例：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">Done</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>    <span class="kt">BOOL</span> <span class="n">ret</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span> <span class="nl">runMode:</span><span class="n">NSDefaultRunLoopMode</span>
-</span><span class='line'>                                      <span class="nl">beforeDate:</span><span class="p">[</span><span class="n">NSDate</span> <span class="n">distantFuture</span><span class="p">]];</span>
-</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exiting runloop.........: %d&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>那么如何知道一个Run Loop是因为什么原因exit返回的呢？NSRunLoop没有接口可以知道，而需要通过Core Foundation的接口来运行CFRunLoopRef，NSRunLoop其实就是CFRunLoopRef的二次封装。使用CFRunLoop的接口(C的接口)来运行Run Loop，有两个接口：</p>
-
-<ul>
-<li><code>void CFRunLoopRun(void);</code></li>
-</ul>
-
-
-<p>运行在默认的kCFRunLoopDefaultMode模式下，直到使用CFRunLoopStop接口停止这个Run Loop，或者Run Loop的所有事件源都被删除。</p>
-
-<ul>
-<li><code>SInt32 CFRunLoopRunInMode(CFStringRef mode, CFTimeInterval seconds, Boolean returnAfterSourceHandled);</code></li>
-</ul>
-
-
-<p>第一个参数是指RunLoop运行的模式（例如kCFRunLoopDefaultMode或者kCFRunLoopCommonModes），第二个参数是运行时间，第三个参数是是否在处理事件后让Run Loop退出返回。 示例：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">self</span><span class="p">.</span><span class="n">isCancelled</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>    <span class="p">[</span><span class="n">self</span> <span class="n">doOtherTask</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">SInt32</span> <span class="n">result</span> <span class="o">=</span> <span class="n">CFRunLoopRunInMode</span><span class="p">(</span><span class="n">kCFRunLoopDefaultMode</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">YES</span><span class="p">);</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">kCFRunLoopRunStopped</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">{</span>
-</span><span class='line'>        <span class="p">[</span><span class="n">self</span> <span class="n">cancel</span><span class="p">];</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;exit run loop.........: %ld&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>如果Run Loop退出返回后，返回值是SInt32类型，就是个signed long，表明Run Loop返回的原因，目前有四种：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">enum</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">kCFRunLoopRunFinished</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="c1">//Run Loop结束，没有Timer或者其他Input Source</span>
-</span><span class='line'>    <span class="n">kCFRunLoopRunStopped</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="c1">//Run Loop被停止，使用CFRunLoopStop停止Run Loop</span>
-</span><span class='line'>    <span class="n">kCFRunLoopRunTimedOut</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="c1">//Run Loop超时</span>
-</span><span class='line'>    <span class="n">kCFRunLoopRunHandledSource</span> <span class="o">=</span> <span class="mi">4</span> <span class="c1">////Run Loop处理完事件，注意Timer事件的触发是不会让Run Loop退出返回的，即使CFRunLoopRunInMode的第三个参数是YES也不行</span>
-</span><span class='line'><span class="p">};</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>注意：Run Loop是可以递归调用的，例如一个Run Loop运行过程中一个事件触发后，那么在触发方法里可以再运行当前子线程的Run Loop，然后由这个Run Loop等待其他事件触发。不过这种Run Loop调用方式我用的比较少。</p>
-
-<p>以上Run Loop运行方法参考本文最后的Sample Code自行尝试。</p>
-
-<h3>Run Loop的运行模式Mode</h3>
-
-<p>iOS下Run Loop的主要运行模式mode有：</p>
-
-<p>1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。</p>
-
-<p>This is a configurable group of commonly used modes. Associating an input source with this mode also associates it with each of the modes in the group.</p>
-
-<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。例如在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。默认情况下NSRunLoopCommonModes包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。注意：让Run Loop运行在NSRunLoopCommonModes下是没有意义的，因为一个时刻Run Loop只能运行在一个特定模式下，而不可能是个模式集合。</p>
-
-<p>3) UITrackingRunLoopMode: 用于跟踪触摸事件触发的模式（例如UIScrollView上下滚动），主线程当触摸事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。</p>
-
-<p>4) 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。</p>
-
 <h3>Run Loop的Observer</h3>
 
-<p>可以定义一个Run Loop的观察者在Run Loop进入以下某个状态时得到通知：</p>
+<p>Core Foundation层的接口可以定义一个Run Loop的观察者在Run Loop进入以下某个状态时得到通知：</p>
 
 <ul>
 <li>Run loop的进入</li>
