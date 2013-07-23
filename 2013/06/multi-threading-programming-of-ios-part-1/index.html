@@ -467,17 +467,13 @@
 
 <p>1) NSDefaultRunLoopMode: 默认的运行模式，除了NSConnection对象的事件。</p>
 
-<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。例如在Mac下还有NSConnectionReplyMode、NSModalPanelRunLoopMode、NSEventTrackingRunLoopMode这些模式，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。默认情况下NSRunLoopCommonModes包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。注意：让Run Loop运行在NSRunLoopCommonModes下是没有意义的，因为一个时刻Run Loop只能运行在一个特定模式下，而不可能是个模式集合。</p>
+<p>2) NSRunLoopCommonModes: 是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。在iOS系统中NSRunLoopCommonMode包含NSDefaultRunLoopMode、NSTaskDeathCheckMode、UITrackingRunLoopMode，我有个timer要关联到这些模式上，一个个注册很麻烦，我可以用<code>CFRunLoopAddCommonMode([[NSRunLoop currentRunLoop] getCFRunLoop],(__bridge CFStringRef) NSEventTrackingRunLoopMode)</code>将NSEventTrackingRunLoopMode或者其他模式添加到这个NSRunLoopCommonModes模式中，然后只需要将Timer关联到NSRunLoopCommonModes，即可以实现Run Loop运行在这个模式集合中任何一个模式时，这个Timer都可以被触发。默认情况下NSRunLoopCommonModes包含了NSDefaultRunLoopMode和UITrackingRunLoopMode。注意：让Run Loop运行在NSRunLoopCommonModes下是没有意义的，因为一个时刻Run Loop只能运行在一个特定模式下，而不可能是个模式集合。</p>
 
 <p>3) UITrackingRunLoopMode: 用于跟踪触摸事件触发的模式（例如UIScrollView上下滚动），主线程当触摸事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。</p>
 
-<p>4) 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。</p>
+<p>4) GSEventReceiveRunLoopMode: 用于接受系统事件，属于内部的Run Loop模式。</p>
 
-<p>CF层下的主要模式有：</p>
-
-<p>1) kCFRunLoopDefaultMode: CF层的NSDefaultRunLoopMode
-2) kCFRunLoopCommonModes: CF层的NSRunLoopCommonModes，同样可以利用CFRunLoopAddCommonMode添加自定义的模式。
-3) 自定义Mode: 一样可以自定义，不过是CFStringRef类型而已。</p>
+<p>5) 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。</p>
 
 <p>Run Loop运行时只能以一种固定的模式运行，只会监控这个模式下添加的Timer Source和Input Source，如果这个模式下没有相应的事件源，Run Loop的运行也会立刻返回的。注意Run Loop不能在运行在NSRunLoopCommonModes模式，因为NSRunLoopCommonModes其实是个模式集合，而不是一个具体的模式，我可以在添加事件源的时候使用NSRunLoopCommonModes，只要Run Loop运行在NSRunLoopCommonModes中任何一个模式，这个事件源都可以被触发。</p>
 
