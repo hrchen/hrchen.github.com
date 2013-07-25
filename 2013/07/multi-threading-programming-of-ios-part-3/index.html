@@ -159,7 +159,9 @@ dispatch_sync和dispatch_after是阻塞式的，会一直等到添加的工作�
 
 <p>将一些耗时的工作添加到全局队列，让系统分配线程去做，工作完成后再次调用GCD的主线程队列去完成UI相关的工作，这样做就不会因为大量的非UI相关工作加重主线程负担，从而加快UI事件响应。</p>
 
-<p>其他几个常用的接口有dispatch_get_current_queue()获取当前队列，一般在提交的Block中使用。在提交的Block之外调用时，如果在主线程中就返回主线程Queue；如果是在其他子线程，返回的是默认的并发队列。</p>
+<p>其他几个可能用到的接口有：</p>
+
+<p>dispatch_get_current_queue()获取当前队列，一般在提交的Block中使用。在提交的Block之外调用时，如果在主线程中就返回主线程Queue；如果是在其他子线程，返回的是默认的并发队列。</p>
 
 <p>dispatch_queue_get_label(queue)获取队列的名字，如果你自己创建的队列没有设置名字，那就是返回NULL。</p>
 
@@ -579,7 +581,16 @@ dispatch_group_enter(group)和dispatch_group_leave(group)，这两个接口的�
 <p>GCD的API按功能分为：</p>
 
 <ul>
-<li>创建管理Queue<em> 提交Job</em> Dispatch Group<em> 管理Dispatch Object</em> 信号量Semaphore<em> 队列屏障Barrier</em> Dispatch Source<em> Queue Context数据</em> Dispatch I/O Channel* Dispatch Data 对象</li>
+<li>创建管理Queue</li>
+<li>提交Job</li>
+<li>Dispatch Group</li>
+<li>管理Dispatch Object</li>
+<li>信号量Semaphore</li>
+<li>队列屏障Barrier</li>
+<li>Dispatch Source</li>
+<li>Queue Context数据</li>
+<li>Dispatch I/O Channel</li>
+<li>Dispatch Data 对象</li>
 </ul>
 
 
