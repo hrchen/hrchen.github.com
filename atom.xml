@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-24T00:22:09+08:00</updated>
+  <updated>2013-07-25T22:57:55+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -550,6 +550,14 @@ dispatch_sync和dispatch_after是阻塞式的，会一直等到添加的工作�
 
 <p>将一些耗时的工作添加到全局队列，让系统分配线程去做，工作完成后再次调用GCD的主线程队列去完成UI相关的工作，这样做就不会因为大量的非UI相关工作加重主线程负担，从而加快UI事件响应。</p>
 
+<p>其他几个常用的接口有dispatch_get_current_queue()获取当前队列，一般在提交的Block中使用。在提交的Block之外调用时，如果在主线程中就返回主线程Queue；如果是在其他子线程，返回的是默认的并发队列。</p>
+
+<p>dispatch_queue_get_label(queue)获取队列的名字，如果你自己创建的队列没有设置名字，那就是返回NULL。</p>
+
+<p>dispatch_set_target_queue(object, queue)设置给定对象的目标队列。这是一个非常强大的接口，目标队列负责处理这个GCD Object(参见下面的小节“管理GCD对象”)，注意这个Object还可以是另一个队列。例如我创建了了数个私有并发队列，而将它们的目标队列设置为一个串行的队列，那么我添加到这些并发队列的任务最终还是会被串行执行。</p>
+
+<p>dispatch_main()会阻塞主线程等待主队列Main Queue中的Block执行结束。</p>
+
 <h3>Dispatch Group</h3>
 
 <p>GCD确实非常简单好用，不过有些场景下还是有点问题，例如：</p>
@@ -796,7 +804,7 @@ dispatch_group_enter(group)和dispatch_group_leave(group)，这两个接口的�
 
 <p>和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create(value)用于创建一个信号量类型dispatch_semaphore_t，参数是long类型，表示信号量的初始值；dispatch_semaphore_signal(semaphore)用于通知信号量(增加一个信号量)；dispatch_semaphore_wait(semaphore, timeout)用于等待信号量(减少一个信号量)，第二个参数是超时时间，如果返回值小于0，会按照先后顺序等待其他信号量的通知。</p>
 
-<h3>管理GCD数据</h3>
+<h3>管理GCD对象</h3>
 
 <p>所有GCD的对象同样是有引用计数的，如果引用计数为0就被释放，如果你不再需要所创建的GCD对象，就可以使用dispatch_release(object)将对象的引用计数减一；同样可以使用dispatch_retain(object)将对象的引用计数加一。注意由于全局和主线程队列对象都不需要去dispatch_release和dispatch_retain，即使调用了也没有作用。</p>
 
@@ -804,7 +812,7 @@ dispatch_group_enter(group)和dispatch_group_leave(group)，这两个接口的�
 
 <p>可以使用dispatch_set_context(object, context)给一个GCD对象设置一个关联的数据，第二个参数任何一个内存地址；dispatch_set_context(object)就是获得这个关联数据，这样可以方便传递各类上下文数据。</p>
 
-<p>本小节提到的GCD对象不单指队列dispatch_queue_t，是指在GCD中出现的各种类型，声明类型dispatch_object_t是个union：</p>
+<p>本小节提到的GCD对象(Dispatch Object)不单指队列dispatch_queue_t，是指在GCD中出现的各种类型，声明类型dispatch_object_t是个union：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
