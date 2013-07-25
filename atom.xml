@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-25T22:57:55+08:00</updated>
+  <updated>2013-07-25T23:02:53+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -477,7 +477,7 @@ Block对象常见的循环引用问题如下：</p>
     <link href="http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/"/>
     <updated>2013-07-02T21:20:00+08:00</updated>
     <id>http://hrchen.com/2013/07/multi-threading-programming-of-ios-part-3</id>
-    <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是基于Objective-C的Block特性开发的，基本业务逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation子类使用起来更方便，大大降低了多线程开发的门槛。另外，GCD是开源的喔：<a href="http://libdispatch.macosforge.org/">libdispatch</a></p>
+    <content type="html"><![CDATA[<p>前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是基于Objective-C的Block特性开发的，基本业务逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation子类使用起来更方便，大大降低了多线程开发的门槛。另外，GCD是开源的喔：<a href="http://libdispatch.macosforge.org/">libdispatch</a>。</p>
 
 <h3>基本用法</h3>
 
