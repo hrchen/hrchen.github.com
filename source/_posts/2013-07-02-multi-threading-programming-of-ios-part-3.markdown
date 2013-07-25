@@ -6,7 +6,7 @@ comments: true
 categories: iOS
 ---
 
-前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是基于Objective-C的Block特性开发的，基本业务逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation子类使用起来更方便，大大降低了多线程开发的门槛。另外，GCD是开源的喔：[libdispatch](http://libdispatch.macosforge.org/)
+前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是基于Objective-C的Block特性开发的，基本业务逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation子类使用起来更方便，大大降低了多线程开发的门槛。另外，GCD是开源的喔：[libdispatch](http://libdispatch.macosforge.org/)。
 
 ###基本用法
 首先示例：
@@ -39,7 +39,6 @@ dispatch_async_f(dispatch_queue_t queue,
 ###Dispatch Queue
 要添加工作到队列Dispatch Queue中，这个队列可以是串行或者并行的，并行队列会尽可能的并发执行其中的工作任务，而串行队列每次只能运行一个工作任务。
 
-
 目前GCD中有三种类型的Dispatch Queue：
 
 * Main Queue：关联到主线程的队列，可以使用函数dispatch_get_main_queue()获得，加到这个队列中的工作都会分发到主线程运行。主线程只有一个，因此很明显这个是串行队列，每次运行一个工作。
@@ -57,6 +56,16 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 });
 ```
 将一些耗时的工作添加到全局队列，让系统分配线程去做，工作完成后再次调用GCD的主线程队列去完成UI相关的工作，这样做就不会因为大量的非UI相关工作加重主线程负担，从而加快UI事件响应。
+
+其他几个可能用到的接口有：
+
+dispatch_get_current_queue()获取当前队列，一般在提交的Block中使用。在提交的Block之外调用时，如果在主线程中就返回主线程Queue；如果是在其他子线程，返回的是默认的并发队列。
+
+dispatch_queue_get_label(queue)获取队列的名字，如果你自己创建的队列没有设置名字，那就是返回NULL。
+
+dispatch_set_target_queue(object, queue)设置给定对象的目标队列。这是一个非常强大的接口，目标队列负责处理这个GCD Object(参见下面的小节“管理GCD对象”)，注意这个Object还可以是另一个队列。例如我创建了了数个私有并发队列，而将它们的目标队列设置为一个串行的队列，那么我添加到这些并发队列的任务最终还是会被串行执行。
+
+dispatch_main()会阻塞主线程等待主队列Main Queue中的Block执行结束。
 
 
 ###Dispatch Group
@@ -233,7 +242,7 @@ dispatch_once的意思是在App整个生命周期内运行并且只允许一次�
 和其他多线程技术一样，GCD也支持信号量，dispatch_semaphore_create(value)用于创建一个信号量类型dispatch_semaphore_t，参数是long类型，表示信号量的初始值；dispatch_semaphore_signal(semaphore)用于通知信号量(增加一个信号量)；dispatch_semaphore_wait(semaphore, timeout)用于等待信号量(减少一个信号量)，第二个参数是超时时间，如果返回值小于0，会按照先后顺序等待其他信号量的通知。
 
 
-###管理GCD数据
+###管理GCD对象
 
 所有GCD的对象同样是有引用计数的，如果引用计数为0就被释放，如果你不再需要所创建的GCD对象，就可以使用dispatch_release(object)将对象的引用计数减一；同样可以使用dispatch_retain(object)将对象的引用计数加一。注意由于全局和主线程队列对象都不需要去dispatch_release和dispatch_retain，即使调用了也没有作用。
 
@@ -241,7 +250,7 @@ dispatch_suspend(queue)可以暂停一个GCD队列的执行，当然由于是blo
 
 可以使用dispatch_set_context(object, context)给一个GCD对象设置一个关联的数据，第二个参数任何一个内存地址；dispatch_set_context(object)就是获得这个关联数据，这样可以方便传递各类上下文数据。
 
-本小节提到的GCD对象不单指队列dispatch_queue_t，是指在GCD中出现的各种类型，声明类型dispatch_object_t是个union：
+本小节提到的GCD对象(Dispatch Object)不单指队列dispatch_queue_t，是指在GCD中出现的各种类型，声明类型dispatch_object_t是个union：
 
 ```
 typedef union {
@@ -352,7 +361,17 @@ void dispatch_write(
 
 GCD的API按功能分为：
 
-* 创建管理Queue* 提交Job* Dispatch Group* 管理Dispatch Object* 信号量Semaphore* 队列屏障Barrier* Dispatch Source* Queue Context数据* Dispatch I/O Channel* Dispatch Data 对象
+
+* 创建管理Queue
+* 提交Job
+* Dispatch Group
+* 管理Dispatch Object
+* 信号量Semaphore
+* 队列屏障Barrier
+* Dispatch Source
+* Queue Context数据
+* Dispatch I/O Channel
+* Dispatch Data 对象
 
 各组接口的详细说明还是参考《Grand Central Dispatch (GCD) Reference》。
 
