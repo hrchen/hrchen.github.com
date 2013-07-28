@@ -152,7 +152,7 @@ dispatch_barrier_async(queue, block3);
 dispatch_async(queue, block4);
 dispatch_async(queue, block5);
 ```
-dispatch_barrier_async是异步的，调用后立刻返回，即使block3到了队列首部，也不会立刻执行，而是等到block1和block2的并行执行完成后才会执行block3，完成后再会并行运行block4和block5。注意这里的queue应该是一个并行队列，否则dispatch_barrier_async操作就失去了意义。
+dispatch_barrier_async是异步的，调用后立刻返回，即使block3到了队列首部，也不会立刻执行，而是等到block1和block2的并行执行完成后才会执行block3，完成后再会并行运行block4和block5。注意这里的queue应该是一个并行队列，而且必须是dispatch_queue_create(label, attr)创建的自定义并行队列，否则dispatch_barrier_async操作就失去了意义。
 
 ###Dispatch Source
 

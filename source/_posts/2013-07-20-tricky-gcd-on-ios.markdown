@@ -32,9 +32,12 @@ dispatch_time_t delayTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t) (delayInS
 然而如果在App中用dispatch_after来控制UI的显示顺序时确实非常危险的，可能并不见的严格按照你期望的延迟量去显示UI，所以最好还是少碰dispatch_after，而是通过合适的回调来控制UI先后顺序，例如利用-viewWillAppear和-viewDidAppear来处理UI的先后顺序。
 
 ###坑四
-如果使用dispatch_get_global_queue来生成全局队列时，可以设置4种优先级设置，但是如果没有明确的必要，不要在程序中使用不同的优先级来控制Block的执行，尤其是在特殊情况可能会导致这篇[Blog](http://www.objc.io/issue-2/concurrency-apis-and-pitfalls.html)提到的Priority Inversion问题，具体为什么直接查看这篇Blog的说明，记住一点尽量只用DISPATCH_QUEUE_PRIORITY_DEFAULT默认的优先级创建全局队列。
+在使用Dispatch Barrier(dispatch_barrier_async或者dispatch_barrier_sync)时，必须注意它只对dispatch_queue_create(label, attr)接口创建的并发队列有作用，如果是Global Queue(dispatch_get_global_queue)，这个barrier就不起作用，想想也正常，是全局的队列，凭什么你一个barrier就同步其他任务的执行呢？所以必须得是私有并发队列才有barrier的作用。如果是私有串行队列呢？那不是和主队列一样，已经是串行的了，还要barrier做啥？
 
 ###坑五
+如果使用dispatch_get_global_queue来生成全局队列时，可以设置4种优先级设置，但是如果没有明确的必要，不要在程序中使用不同的优先级来控制Block的执行，尤其是在特殊情况可能会导致这篇[Blog](http://www.objc.io/issue-2/concurrency-apis-and-pitfalls.html)提到的Priority Inversion问题，具体为什么直接查看这篇Blog的说明，记住一点尽量只用DISPATCH_QUEUE_PRIORITY_DEFAULT默认的优先级创建全局队列。
+
+###坑六
 多线程开发最危险的两件事就是死锁和公共资源访问问题。使用GCD的场景如果很复杂，就有非常大的可能遇到死锁问题，尤其是在使用dispatch_sync的时候：
 
 ```

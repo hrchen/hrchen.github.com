@@ -14,10 +14,10 @@ categories:
 
 [UIView Class Reference](http://developer.apple.com/library/ios/#documentation/UIKit/Reference/UIView_Class/UIView/UIView.html)中讲到UIView主要负责三件事：
 
-(1)绘图和动画：利用UIKit、Core Graphics或者OpenGL ES绘制视图内容；有些UIView视图属性支持动画。
+(1) 绘图和动画：利用UIKit、Core Graphics或者OpenGL ES绘制视图内容；有些UIView视图属性支持动画。
 
-(2)布局和子视图管理；一个视图可以关联零个或者多个子视图，如果有子视图，还可以定义子视的大小和位置；每个视图会定义它相对于父视图的尺寸变化(resizing)规则
+(2) 布局和子视图管理；一个视图可以关联零个或者多个子视图，如果有子视图，还可以定义子视的大小和位置；每个视图会定义它相对于父视图的尺寸变化(resizing)规则
 
-(3)事件处理：UIView集成自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。
+(3) 事件处理：UIView集成自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。
 
-那么UIView中哪些属性可以支持动画呢？有这些：frame，bounds，center，alpha，backgroundColor，contentStretch(iOS 6之后不推荐使用，即Deprecated)，transform。除了transform外，其他属性都很直接，这里transform是CGAffineTransform类型（[CGAffineTransform Reference](http://developer.apple.com/library/ios/#documentation/GraphicsImaging/Reference/CGAffineTransform/Reference/reference.html)）。
+那么UIView中哪些属性可以支持动画呢？有这些：frame，bounds，center，alpha，backgroundColor，contentStretch(iOS 6之后不推荐使用，即Deprecated)，transform。除了transform外，其他属性都很直接，这里transform是CGAffineTransform类型（[CGAffineTransform Reference](http://developer.apple.com/library/ios/#documentation/GraphicsImaging/Reference/CGAffineTransform/Reference/reference.html)）。这里的transform是Affine Transform，即仿射变换，
