@@ -288,7 +288,7 @@ dispatch_group_enter(group)和dispatch_group_leave(group)，这两个接口的�
 </span><span class='line'>dispatch_async(queue, block5);</span></code></pre></td></tr></table></div></figure>
 
 
-<p>dispatch_barrier_async是异步的，调用后立刻返回，即使block3到了队列首部，也不会立刻执行，而是等到block1和block2的并行执行完成后才会执行block3，完成后再会并行运行block4和block5。注意这里的queue应该是一个并行队列，否则dispatch_barrier_async操作就失去了意义。</p>
+<p>dispatch_barrier_async是异步的，调用后立刻返回，即使block3到了队列首部，也不会立刻执行，而是等到block1和block2的并行执行完成后才会执行block3，完成后再会并行运行block4和block5。注意这里的queue应该是一个并行队列，而且必须是dispatch_queue_create(label, attr)创建的自定义并行队列，否则dispatch_barrier_async操作就失去了意义。</p>
 
 <h3>Dispatch Source</h3>
 
@@ -658,6 +658,18 @@ Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Sha
 </script>
 
 
+
+	<script type="text/javascript">
+		var _gaq = _gaq || [];
+		_gaq.push(['_setAccount', 'UA-42768336-1']);
+		_gaq.push(['_trackPageview']);
+
+		(function() {
+			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		})();
+	</script>
 
 
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2013-07-25T23:04:51+08:00</updated>
+  <updated>2013-07-29T23:59:28+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -48,9 +48,13 @@ dispatch_time_t delayTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t) (delayInS
 
 <h3>坑四</h3>
 
-<p>如果使用dispatch_get_global_queue来生成全局队列时，可以设置4种优先级设置，但是如果没有明确的必要，不要在程序中使用不同的优先级来控制Block的执行，尤其是在特殊情况可能会导致这篇<a href="http://www.objc.io/issue-2/concurrency-apis-and-pitfalls.html">Blog</a>提到的Priority Inversion问题，具体为什么直接查看这篇Blog的说明，记住一点尽量只用DISPATCH_QUEUE_PRIORITY_DEFAULT默认的优先级创建全局队列。</p>
+<p>在使用Dispatch Barrier(dispatch_barrier_async或者dispatch_barrier_sync)时，必须注意它只对dispatch_queue_create(label, attr)接口创建的并发队列有作用，如果是Global Queue(dispatch_get_global_queue)，这个barrier就不起作用，想想也正常，是全局的队列，凭什么你一个barrier就同步其他任务的执行呢？所以必须得是私有并发队列才有barrier的作用。如果是私有串行队列呢？那不是和主队列一样，已经是串行的了，还要barrier做啥？</p>
 
 <h3>坑五</h3>
+
+<p>如果使用dispatch_get_global_queue来生成全局队列时，可以设置4种优先级设置，但是如果没有明确的必要，不要在程序中使用不同的优先级来控制Block的执行，尤其是在特殊情况可能会导致这篇<a href="http://www.objc.io/issue-2/concurrency-apis-and-pitfalls.html">Blog</a>提到的Priority Inversion问题，具体为什么直接查看这篇Blog的说明，记住一点尽量只用DISPATCH_QUEUE_PRIORITY_DEFAULT默认的优先级创建全局队列。</p>
+
+<h3>坑六</h3>
 
 <p>多线程开发最危险的两件事就是死锁和公共资源访问问题。使用GCD的场景如果很复杂，就有非常大的可能遇到死锁问题，尤其是在使用dispatch_sync的时候：</p>
 
