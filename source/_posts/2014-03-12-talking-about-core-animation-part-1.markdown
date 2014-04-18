@@ -6,9 +6,9 @@ comments: true
 categories: iOS
 ---
 
-那啥，一忙起来就忘记更新Blog了，目前移动产品开发也有了新的趋势，单纯搞一个平台越来越难混了，HTML5在国内App开发中的应用逐步流行，因此未来移动开发工程师不仅仅要懂iOS/Android，还应该了解H5，也就是Hybrid的开发模式，改日再叙。
+那啥，一忙起来就忘记更新Blog了，目前移动产品开发也有了新的趋势，继续守在一个平台越来越难混了，HTML5在国内App开发中的应用逐步流行，因此未来移动开发工程师不仅仅要懂iOS/Android，还应该了解H5，也就是Hybrid的开发模式，具体改日再叙。
 
-今天继续原来的iOS开发系列，聊聊iOS中牛逼闪闪的Core Animation，会分为两个部分。先来了解下iOS中动画的层次：
+今天继续扯iOS开发系列，聊聊iOS中牛逼闪闪的Core Animation，会有两个部分。先来了解下iOS中动画的层次：
 
 {% img /images/post/core-animation-architecture.jpg %}
 
@@ -22,4 +22,13 @@ categories: iOS
 
 (3) 事件处理：UIView继承自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。
 
-那么UIView中哪些属性可以支持动画呢？有这些：frame，bounds，center，alpha，backgroundColor，contentStretch(iOS 6之后不推荐使用，已经标为Deprecated)，transform。除了transform外，其他属性都很直接，这里transform是CGAffineTransform类型（[CGAffineTransform Reference](http://developer.apple.com/library/ios/#documentation/GraphicsImaging/Reference/CGAffineTransform/Reference/reference.html)）。这里的transform是Affine Transform，即仿射变换。
+那么UIView中哪些属性可以支持动画呢？有frame，bounds，center，alpha，backgroundColor，contentStretch(iOS 6之后不推荐使用，已经标为Deprecated)，transform。除了transform外，其他属性都很直白，这里transform是CGAffineTransform类型（[CGAffineTransform Reference](http://developer.apple.com/library/ios/#documentation/GraphicsImaging/Reference/CGAffineTransform/Reference/reference.html)）。这里的transform是Affine Transform，即仿射变换，可以在二维中做各种视图变换。其本质就是个矩阵：
+
+{% img https://developer.apple.com/library/ios/documentation/GraphicsImaging/Reference/CGAffineTransform/Art/equation01_2x.png %}
+
+通过CGAffineTransform.h中的各种TransformMake接口就可以轻松实现二维视图的选择、放大、移动等操作。如果要了解如何使用这些仿射变换，可以参考文档[《Quartz 2D Programming Guide》](https://developer.apple.com/library/ios/documentation/GraphicsImaging/Conceptual/drawingwithquartz2d/Introduction/Introduction.html)。Quartz 2D是iOS上的二维渲染引擎，提供了诸如透明Layer、Path绘图、离屏渲染、颜色管理、反锯齿渲染以及PDF相关的显示。基本上我们用的到这些接口的场景也就是：二维绘图、图形编辑功能、创建和显示位图，还有PDF相关的功能。细节这里就不表了，改日再叙。
+
+
+
+
+
