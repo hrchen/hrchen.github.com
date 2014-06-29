@@ -1,0 +1,34 @@
+ ---
+layout: post
+title: "Core Animation编程 Part1/2"
+date: 2014-03-12 18:13
+comments: true
+categories: iOS
+---
+
+那啥，一忙起来就忘记更新Blog了，目前移动产品开发也有了新的趋势，继续守在一个平台越来越难混了，HTML5在国内App开发中的应用逐步流行，因此未来移动开发工程师不仅仅要懂iOS/Android，还应该了解H5，也就是Hybrid的开发模式，具体改日再叙。
+
+今天继续扯iOS开发系列，聊聊iOS中牛逼闪闪的Core Animation，会有两个部分。先来了解下iOS中动画的层次：
+
+{% img /images/post/core-animation-architecture.jpg %}
+
+最上层是UIKit，第二层是Core Anmation，然后iOS把这些动画效果用Open GL将在硬件上渲染出来。UIKit层中的动画API是作用于UIView，Core Animation层的动画API是作用于CALayer。我个人学习iOS的一个方法就是看类的头文件和相应的官方Reference文档。头文件可以很快查找出类的继承结构、属性和接口情况；Reference文档会详细介绍类的属性、方法以及需要了解的核心信息，没什么比这个文档说得更清楚了。
+
+[UIView Class Reference](http://developer.apple.com/library/ios/#documentation/UIKit/Reference/UIView_Class/UIView/UIView.html)中讲到UIView主要负责三件事：
+
+(1) 绘图和动画：利用UIKit、Core Graphics或者OpenGL ES绘制视图内容；有些UIView视图属性支持动画。
+
+(2) 布局和子视图管理；一个视图可以关联零个或者多个子视图，如果有子视图，还可以定义子视的大小和位置；每个视图会定义它相对于父视图的尺寸变化(resizing)规则
+
+(3) 事件处理：UIView继承自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。
+
+那么UIView中哪些属性可以支持动画呢？有frame，bounds，center，alpha，backgroundColor，contentStretch(iOS 6之后不推荐使用，已经标为Deprecated)，transform。除了transform外，其他属性都很直白，这里transform是CGAffineTransform类型（[CGAffineTransform Reference](http://developer.apple.com/library/ios/#documentation/GraphicsImaging/Reference/CGAffineTransform/Reference/reference.html)）。这里的transform是Affine Transform，即仿射变换，可以在二维中做各种视图变换。其本质就是个矩阵：
+
+{% img https://developer.apple.com/library/ios/documentation/GraphicsImaging/Reference/CGAffineTransform/Art/equation01_2x.png %}
+
+通过CGAffineTransform.h中的各种TransformMake接口就可以轻松实现二维视图的选择、放大、移动等操作。如果要了解如何使用这些仿射变换，可以参考文档[《Quartz 2D Programming Guide》](https://developer.apple.com/library/ios/documentation/GraphicsImaging/Conceptual/drawingwithquartz2d/Introduction/Introduction.html)。Quartz 2D是iOS上的二维渲染引擎，提供了诸如透明Layer、Path绘图、离屏渲染、颜色管理、反锯齿渲染以及PDF相关的显示。基本上我们用的到这些接口的场景也就是：二维绘图、图形编辑功能、创建和显示位图，还有PDF相关的功能。细节这里就不表了，改日再叙。
+
+
+
+
+
