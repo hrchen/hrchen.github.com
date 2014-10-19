@@ -4,7 +4,7 @@
   <title><![CDATA[hrchen's blogging]]></title>
   <link href="http://hrchen.com/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2014-10-19T22:28:59+08:00</updated>
+  <updated>2014-10-19T22:32:42+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -14,22 +14,16 @@
 
   
   <entry>
-    <title type="html"><![CDATA[How To Learn Computer Science]]></title>
+    <title type="html"><![CDATA[如何攀升计算机技能树]]></title>
     <link href="http://hrchen.com/2014/03/how-to-learn-computer-science/"/>
-    <updated>2014-03-13T00:00:00+08:00</updated>
+    <updated>2014-03-13T09:01:00+08:00</updated>
     <id>http://hrchen.com/2014/03/how-to-learn-computer-science</id>
-    <content type="html"><![CDATA[<hr />
-
-<p>layout: post
-title: &#8220;如何攀升计算机技能树&#8221;
-date: 2014-03-13 09:01
-comments: true</p>
-
-<h2>categories: 闲扯</h2>
-
-<p>国内大部分情况下技术搞到一定程度就要转成管理，否则薪酬上不去，其实对于热爱技术的人而言是不公平的，每天花很多时间做PPT和项目管理真心无趣啊。不过近年来很多高级IT工程师岗位薪酬达到40W+已经却来越多了，不过要突破50W乃至60W+，大都还是意味着你要做管理性质的工作。情况在好转，只要你有核心技术实力，又在很好的技术发展方向上，工程师突破50W+难度没那么大。附张国内主流互联网公司薪酬范围表：</p>
+    <content type="html"><![CDATA[<p>国内大部分情况下技术搞到一定程度就要转成管理，否则薪酬上不去，其实对于热爱技术的人而言是不公平的，每天花很多时间做PPT和项目管理真心无趣啊。不过近年来很多高级IT工程师岗位薪酬达到40W+已经却来越多了，不过要突破50W乃至60W+，大都还是意味着你要做管理性质的工作。情况在好转，只要你有核心技术实力，又在很好的技术发展方向上，工程师突破50W+难度没那么大。附张国内主流互联网公司薪酬范围表：</p>
 
 <p><img src="http://hrchen.com/images/post/money_list_2014.jpg"></p>
+
+<!--more-->
+
 
 <p>要提升薪酬，其实和玩游戏攀升技能树没啥区别，在互联网时代，没有你学不到的知识，关键是不是找对道。计算机最重要的还是基础，例如iOS/Android开发现在很火热，5年后10年后呢，一定会有新的技术把它取代，就像当年的Symbian。那些搞Symbian开发的人如今只能转行，API和trick玩得再熟也没有意义了。IT行业每五年就会有一些热门的技术与发展方向冒出来，例如iOS、Android、大数据等等，火上几年，再被新技术取代。能否快速搭对车就得看你的计算机基础是否扎实了，够扎实无论做前端还是后端，或者现在流行的所谓Full Stack全栈工程师又有什么不可以呢？基础好，就能够快速吸收新的知识与技术。</p>
 
@@ -139,20 +133,11 @@ comments: true</p>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[Talking About Core Animation Part 1]]></title>
+    <title type="html"><![CDATA[Core Animation编程 Part1/2]]></title>
     <link href="http://hrchen.com/2014/03/talking-about-core-animation-part-1/"/>
-    <updated>2014-03-12T00:00:00+08:00</updated>
+    <updated>2014-03-12T18:13:00+08:00</updated>
     <id>http://hrchen.com/2014/03/talking-about-core-animation-part-1</id>
-    <content type="html"><![CDATA[<hr />
-
-<p>layout: post
-title: &#8220;Core Animation编程 Part1/2&#8221;
-date: 2014-03-12 18:13
-comments: true</p>
-
-<h2>categories: iOS</h2>
-
-<p>那啥，一忙起来就彻底忘记更新Blog了，目前移动产品开发也有了新的趋势，继续守在一个平台越来越难混了，HTML5在国内App开发中也逐步流行，因此未来移动开发工程师不仅仅要懂iOS/Android，多少还需要了解些H5，也就是Hybrid的开发模式，具体改日再叙。</p>
+    <content type="html"><![CDATA[<p>那啥，一忙起来就彻底忘记更新Blog了，目前移动产品开发也有了新的趋势，继续守在一个平台越来越难混了，HTML5在国内App开发中也逐步流行，因此未来移动开发工程师不仅仅要懂iOS/Android，多少还需要了解些H5，也就是Hybrid的开发模式，具体改日再叙。</p>
 
 <p>今天继续扯iOS开发系列，聊聊iOS中牛逼闪闪的Core Animation，会有两个部分。先来了解下iOS中动画的层次：</p>
 
@@ -167,6 +152,9 @@ comments: true</p>
 <p>(2) 布局和子视图管理；一个视图可以关联零个或者多个子视图，如果有子视图，还可以定义子视的大小和位置；每个视图会定义它相对于父视图的尺寸变化(resizing)规则</p>
 
 <p>(3) 事件处理：UIView继承自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。</p>
+
+<!--more-->
+
 
 <p>UIView的渲染原理可以参考WWDC 2011的Session：<a href="https://developer.apple.com/videos/wwdc/2011/">Understanding UIKit Rendering</a>以及objc.io的<a href="http://www.objc.io/issue-3/moving-pixels-onto-the-screen.html">Getting Pixels onto the Screen</a>，应该算是原理比较透彻了。</p>
 

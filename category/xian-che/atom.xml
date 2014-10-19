@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 闲扯 | hrchen's blogging]]></title>
   <link href="http://hrchen.com/category/xian-che/atom.xml" rel="self"/>
   <link href="http://hrchen.com/"/>
-  <updated>2014-10-19T22:28:59+08:00</updated>
+  <updated>2014-10-19T22:32:42+08:00</updated>
   <id>http://hrchen.com/</id>
   <author>
     <name><![CDATA[hrchen]]></name>
@@ -12,6 +12,125 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[如何攀升计算机技能树]]></title>
+    <link href="http://hrchen.com/2014/03/how-to-learn-computer-science/"/>
+    <updated>2014-03-13T09:01:00+08:00</updated>
+    <id>http://hrchen.com/2014/03/how-to-learn-computer-science</id>
+    <content type="html"><![CDATA[<p>国内大部分情况下技术搞到一定程度就要转成管理，否则薪酬上不去，其实对于热爱技术的人而言是不公平的，每天花很多时间做PPT和项目管理真心无趣啊。不过近年来很多高级IT工程师岗位薪酬达到40W+已经却来越多了，不过要突破50W乃至60W+，大都还是意味着你要做管理性质的工作。情况在好转，只要你有核心技术实力，又在很好的技术发展方向上，工程师突破50W+难度没那么大。附张国内主流互联网公司薪酬范围表：</p>
+
+<p><img src="/images/post/money_list_2014.jpg"></p>
+
+<!--more-->
+
+
+<p>要提升薪酬，其实和玩游戏攀升技能树没啥区别，在互联网时代，没有你学不到的知识，关键是不是找对道。计算机最重要的还是基础，例如iOS/Android开发现在很火热，5年后10年后呢，一定会有新的技术把它取代，就像当年的Symbian。那些搞Symbian开发的人如今只能转行，API和trick玩得再熟也没有意义了。IT行业每五年就会有一些热门的技术与发展方向冒出来，例如iOS、Android、大数据等等，火上几年，再被新技术取代。能否快速搭对车就得看你的计算机基础是否扎实了，够扎实无论做前端还是后端，或者现在流行的所谓Full Stack全栈工程师又有什么不可以呢？基础好，就能够快速吸收新的知识与技术。</p>
+
+<p>怎么打好基础？按照Stanford的CS课程学一遍计算机科学系(Computer Science)的基础课程就行。学最好的课程、读最好的书，只要你不笨，这些真得有那么难吗？</p>
+
+<p>Stanford的CS课程是围绕着系统+应用+理论(System+Application+Theory)的概念来开展的，系统就是将计算机科学中比较大的系统化知识核心划分为几个系统：</p>
+
+<ul>
+<li>计算机系统(Comupter System): 对应咱们的计算机体系结构之类的课程。</li>
+<li>编程系统(Programming System): 包括编译原理、编程语言相关的所有理论知识和技术。</li>
+<li>操作系统(Operating System)</li>
+<li>数据库系统(Database System)</li>
+<li>分布和网络系统(Distributed and Networking System)</li>
+</ul>
+
+
+<p>应用Application就是计算机中一些比较离散的知识，例如图像识别、自然语言处理这种独立体系的方向。</p>
+
+<p>理论Theory就是离散数学、计算理论、算法这种相对理论的知识了。</p>
+
+<p>看起来够零散吧，难怪计算机科学Computer Science总是被其他学科嘲笑，因为那些真正的科学都不会将自己的名字后面加上“科学”二字的，你见过物理科学系或者数学科学系么。</p>
+
+<p>以下是推荐主要的CS课程，如果是后面带6.033这种数字则对应MIT课程，MIT的OCW项目可以找到对应课件。我觉得国外的计算机教育最棒的就是他们的Project设计，非常强调动手能力，Stanford的课程一般只有3周，却有大量的Project，要自学务必完成这些Project，真的非常有趣。要进入这些课程请自行Google。</p>
+
+<p>Computer System:</p>
+
+<ul>
+<li>cs107 Computer Organization and Systems</li>
+<li>cs110 Principles of Computer Systems  (6.033)</li>
+</ul>
+
+
+<p>Operating System:</p>
+
+<ul>
+<li>cs140 Operating Systems and Systems Programming (6.828)</li>
+<li>cs240 Advanced Topics in Operating Systems</li>
+</ul>
+
+
+<p>Networking System:</p>
+
+<ul>
+<li>cs144 Introduction to Computer Networking (6.829)</li>
+<li>cs244 Advanced Topics in Networking (6.855) (15.082J)</li>
+<li>cs244B Distributed Systems (6.842) (6.852J)</li>
+</ul>
+
+
+<p>Database System:</p>
+
+<ul>
+<li>cs145 Introduction to Databases cs245Database System Principles</li>
+<li>cs229T Statistical Learning Theory cs229Machine Learning</li>
+<li>cs246 Mining Massive Data Sets</li>
+<li>cs341 Project in Mining Massive Data Sets</li>
+<li>cs276 Information Retrieval and Web Search</li>
+<li>cs347 Parallel and Distributed Data Management</li>
+<li>cs309A Cloud Computing</li>
+</ul>
+
+
+<p>Programming System:</p>
+
+<ul>
+<li>cs106A Programming Methodology</li>
+<li>cs106B Programming Abstractions (C++)</li>
+<li>cs106X Programming Abstractions (C++)</li>
+<li>cs108 Object-Oriented Systems Design (Java)</li>
+<li>cs143 Compilers cs192Programming Service Project</li>
+<li>cs193C Client-Side Internet Technologies</li>
+<li>cs106L Standard C++ Programming Laboratory</li>
+<li>cs243 Program Analysis and Optimizations</li>
+<li>cs343 Advanced Topics in Compilers</li>
+<li>cs242 Programming Languages</li>
+</ul>
+
+
+<p>Applications:</p>
+
+<ul>
+<li>cs148 Introduction to Computer Graphics and Imaging</li>
+<li>cs232 Digital Image Processing</li>
+<li>cs224U Natural Language Understanding</li>
+<li>cs224N Natural Language Processing</li>
+<li>cs193P iPhone and iPad Application Programming</li>
+<li>cs193A Android Programmingcs193E Cocoa Programming</li>
+<li>cs142 Web Applications</li>
+</ul>
+
+
+<p>Theory:</p>
+
+<ul>
+<li>cs103 Mathematical Foundations of Computing</li>
+<li>cs103A Discrete Mathematics for Computer Science</li>
+<li>cs161 Design and Analysis of Algorithms</li>
+<li>cs254 Computational Complexity</li>
+<li>cs261 Optimization and Algorithmic Paradigms</li>
+<li>cs361B Advanced Algorithms (6.854J)</li>
+<li>cs469 Algorithms in Mobile Applications</li>
+</ul>
+
+
+<p>这些基础课程是计算机知识的核心基础，掌握牢靠后再去做iOS、Android、JS、亦或后台开发，自然心里有底。结合这些课程，记得读些好书，CSAPP、Richard Stevens的经典著作，都值得深读2~3遍。作为Programmer，动手永远都是最重要的，记得试试CSAPP里面那几个lab，很有趣。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[重新开始写Blog]]></title>
