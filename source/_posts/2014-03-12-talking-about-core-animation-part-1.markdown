@@ -1,4 +1,4 @@
- ---
+---
 layout: post
 title: "Core Animation编程 Part1/2"
 date: 2014-03-12 18:13
@@ -21,6 +21,8 @@ categories: iOS
 (2) 布局和子视图管理；一个视图可以关联零个或者多个子视图，如果有子视图，还可以定义子视的大小和位置；每个视图会定义它相对于父视图的尺寸变化(resizing)规则
 
 (3) 事件处理：UIView继承自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。
+
+<!--more-->
 
 UIView的渲染原理可以参考WWDC 2011的Session：[Understanding UIKit Rendering](https://developer.apple.com/videos/wwdc/2011/)以及objc.io的[Getting Pixels onto the Screen](http://www.objc.io/issue-3/moving-pixels-onto-the-screen.html)，应该算是原理比较透彻了。
 
@@ -132,7 +134,7 @@ fillMode表示表示动画的效果在有效期前后的赋值模式，有kCAFil
 
 第一句`+ (instancetype)animationWithKeyPath:(NSString *)path;` 表示需要修改的Layer属性，例如“position”，”tansform.scale”，可以对哪些属性进行修改，可以参考[官方文档](),后面几句设置的duration、autoreverses、repeatCount都已经解释过，toValue是设置动画属性的目标值，timingFunction是至动画的时间函数，就是个简单的贝塞尔曲线（Bezier Curve）,如下图所示：
 
-{% img http://ww1.sinaimg.cn/large/65cc0af7gw1dxlv7mhtj3j.jpg %}
+{% img https://developer.apple.com/library/ios/documentation/cocoa/conceptual/animation_types_timing/Art/standardtiming_2x.png %}
 
 分别代表kCAMediaTimingFunctionLinear, 
 kCAMediaTimingFunctionEaseIn, 
@@ -141,7 +143,8 @@ kCAMediaTimingFunctionEaseInEaseOut四类时间函数，简单点理解就是动
 
 {% img http://ww2.sinaimg.cn/large/65cc0af7gw1dxm21gxjr0j.jpg %}
 
-如果时间函数无法用简单的贝塞尔曲线表达，那么就得用到另一种动画了CAKeyframeAnimation关键帧动画，Part 2再继续聊。关于时间函数可以参考卢克的Blog [漫谈iOS Animation](http://geeklu.com/2012/09/animation-in-ios/)
+自定义时间函数当然也是可以的，参考[How to create custom easing function with Core Animation](http://stackoverflow.com/questions/5161465/how-to-create-custom-easing-function-with-core-animation)
 
+如果时间函数无法用简单的贝塞尔曲线表达，那么就得用到另一种动画了CAKeyframeAnimation关键帧动画，Part 2再继续聊。关于时间函数可以参考卢克的Blog [漫谈iOS Animation](http://geeklu.com/2012/09/animation-in-ios/)或者官方文档[Animation Types and Timing Programming Guide](https://developer.apple.com/library/ios/documentation/cocoa/conceptual/animation_types_timing/articles/PropertyAnimations.html)
 
 Example Source：[CA360](https://github.com/neror/CA360)
