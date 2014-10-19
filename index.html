@@ -7,7 +7,10 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="Jul 20th, 2013 iOS iOS中GCD的那些坑 之前一个系列中iOS多线程编程Part 3/3 - GCD介绍了GCD的各类接口，别仅仅使用了最基本的dispatch_async和dispatch_sync接口提交个Block完事，那就白瞎GCD的强大功能了。要用高级接口， &hellip;">
+	<meta name="description" content="Mar 13th, 2014 How to Learn Computer Science layout: post
+title: &#8220;如何攀升计算机技能树&#8221;
+date: 2014-03-13 09:01
+comments: true categories: 闲扯 &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -47,7 +50,7 @@
 </hgroup>
 
 <p class="subtitle">Mobile Dev (dr.hrchen@gmail.com)</p>
-<p class="subtitle">CS Ph.D，专注移动产品开发，了解点后端</p>
+<p class="subtitle">CS Ph.D，专注移动产品开发</p>
 <nav id="main-nav"><ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
@@ -86,6 +89,355 @@
 			<div class="mid-col-container">
 				<div id="content" class="inner">
 <div itemscope itemtype="http://schema.org/Blog">
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-13T00:00:00+08:00" data-updated="true" itemprop="datePublished">Mar 13<span>th</span>, 2014</time></div>
+		<div class="tags">
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2014/03/how-to-learn-computer-science/" itemprop="url">How to Learn Computer Science</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<hr />
+
+<p>layout: post
+title: &#8220;如何攀升计算机技能树&#8221;
+date: 2014-03-13 09:01
+comments: true</p>
+
+<h2>categories: 闲扯</h2>
+
+<p>国内大部分情况下技术搞到一定程度就要转成管理，否则薪酬上不去，其实对于热爱技术的人而言是不公平的，每天花很多时间做PPT和项目管理真心无趣啊。不过近年来很多高级IT工程师岗位薪酬达到40W+已经却来越多了，不过要突破50W乃至60W+，大都还是意味着你要做管理性质的工作。情况在好转，只要你有核心技术实力，又在很好的技术发展方向上，工程师突破50W+难度没那么大。附张国内主流互联网公司薪酬范围表：</p>
+
+<p><img src="/images/post/money_list_2014.jpg"></p>
+
+<p>要提升薪酬，其实和玩游戏攀升技能树没啥区别，在互联网时代，没有你学不到的知识，关键是不是找对道。计算机最重要的还是基础，例如iOS/Android开发现在很火热，5年后10年后呢，一定会有新的技术把它取代，就像当年的Symbian。那些搞Symbian开发的人如今只能转行，API和trick玩得再熟也没有意义了。IT行业每五年就会有一些热门的技术与发展方向冒出来，例如iOS、Android、大数据等等，火上几年，再被新技术取代。能否快速搭对车就得看你的计算机基础是否扎实了，够扎实无论做前端还是后端，或者现在流行的所谓Full Stack全栈工程师又有什么不可以呢？基础好，就能够快速吸收新的知识与技术。</p>
+
+<p>怎么打好基础？按照Stanford的CS课程学一遍计算机科学系(Computer Science)的基础课程就行。学最好的课程、读最好的书，只要你不笨，这些真得有那么难吗？</p>
+
+<p>Stanford的CS课程是围绕着系统+应用+理论(System+Application+Theory)的概念来开展的，系统就是将计算机科学中比较大的系统化知识核心划分为几个系统：</p>
+
+<ul>
+<li>计算机系统(Comupter System): 对应咱们的计算机体系结构之类的课程。</li>
+<li>编程系统(Programming System): 包括编译原理、编程语言相关的所有理论知识和技术。</li>
+<li>操作系统(Operating System)</li>
+<li>数据库系统(Database System)</li>
+<li>分布和网络系统(Distributed and Networking System)</li>
+</ul>
+
+
+<p>应用Application就是计算机中一些比较离散的知识，例如图像识别、自然语言处理这种独立体系的方向。</p>
+
+<p>理论Theory就是离散数学、计算理论、算法这种相对理论的知识了。</p>
+
+<p>看起来够零散吧，难怪计算机科学Computer Science总是被其他学科嘲笑，因为那些真正的科学都不会将自己的名字后面加上“科学”二字的，你见过物理科学系或者数学科学系么。</p>
+
+<p>以下是推荐主要的CS课程，如果是后面带6.033这种数字则对应MIT课程，MIT的OCW项目可以找到对应课件。我觉得国外的计算机教育最棒的就是他们的Project设计，非常强调动手能力，Stanford的课程一般只有3周，却有大量的Project，要自学务必完成这些Project，真的非常有趣。要进入这些课程请自行Google。</p>
+
+<p>Computer System:</p>
+
+<ul>
+<li>cs107 Computer Organization and Systems</li>
+<li>cs110 Principles of Computer Systems  (6.033)</li>
+</ul>
+
+
+<p>Operating System:</p>
+
+<ul>
+<li>cs140 Operating Systems and Systems Programming (6.828)</li>
+<li>cs240 Advanced Topics in Operating Systems</li>
+</ul>
+
+
+<p>Networking System:</p>
+
+<ul>
+<li>cs144 Introduction to Computer Networking (6.829)</li>
+<li>cs244 Advanced Topics in Networking (6.855) (15.082J)</li>
+<li>cs244B Distributed Systems (6.842) (6.852J)</li>
+</ul>
+
+
+<p>Database System:</p>
+
+<ul>
+<li>cs145 Introduction to Databases cs245Database System Principles</li>
+<li>cs229T Statistical Learning Theory cs229Machine Learning</li>
+<li>cs246 Mining Massive Data Sets</li>
+<li>cs341 Project in Mining Massive Data Sets</li>
+<li>cs276 Information Retrieval and Web Search</li>
+<li>cs347 Parallel and Distributed Data Management</li>
+<li>cs309A Cloud Computing</li>
+</ul>
+
+
+<p>Programming System:</p>
+
+<ul>
+<li>cs106A Programming Methodology</li>
+<li>cs106B Programming Abstractions (C++)</li>
+<li>cs106X Programming Abstractions (C++)</li>
+<li>cs108 Object-Oriented Systems Design (Java)</li>
+<li>cs143 Compilers cs192Programming Service Project</li>
+<li>cs193C Client-Side Internet Technologies</li>
+<li>cs106L Standard C++ Programming Laboratory</li>
+<li>cs243 Program Analysis and Optimizations</li>
+<li>cs343 Advanced Topics in Compilers</li>
+<li>cs242 Programming Languages</li>
+</ul>
+
+
+<p>Applications:</p>
+
+<ul>
+<li>cs148 Introduction to Computer Graphics and Imaging</li>
+<li>cs232 Digital Image Processing</li>
+<li>cs224U Natural Language Understanding</li>
+<li>cs224N Natural Language Processing</li>
+<li>cs193P iPhone and iPad Application Programming</li>
+<li>cs193A Android Programmingcs193E Cocoa Programming</li>
+<li>cs142 Web Applications</li>
+</ul>
+
+
+<p>Theory:</p>
+
+<ul>
+<li>cs103 Mathematical Foundations of Computing</li>
+<li>cs103A Discrete Mathematics for Computer Science</li>
+<li>cs161 Design and Analysis of Algorithms</li>
+<li>cs254 Computational Complexity</li>
+<li>cs261 Optimization and Algorithmic Paradigms</li>
+<li>cs361B Advanced Algorithms (6.854J)</li>
+<li>cs469 Algorithms in Mobile Applications</li>
+</ul>
+
+
+<p>这些基础课程是计算机知识的核心基础，掌握牢靠后再去做iOS、Android、JS、亦或后台开发，自然心里有底。结合这些课程，记得读些好书，CSAPP、Richard Stevens的经典著作，都值得深读2~3遍。作为Programmer，动手永远都是最重要的，记得试试CSAPP里面那几个lab，很有趣。</p>
+
+		
+		
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-12T00:00:00+08:00" data-updated="true" itemprop="datePublished">Mar 12<span>th</span>, 2014</time></div>
+		<div class="tags">
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2014/03/talking-about-core-animation-part-1/" itemprop="url">Talking About Core Animation Part 1</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<hr />
+
+<p>layout: post
+title: &#8220;Core Animation编程 Part1/2&#8221;
+date: 2014-03-12 18:13
+comments: true</p>
+
+<h2>categories: iOS</h2>
+
+<p>那啥，一忙起来就彻底忘记更新Blog了，目前移动产品开发也有了新的趋势，继续守在一个平台越来越难混了，HTML5在国内App开发中也逐步流行，因此未来移动开发工程师不仅仅要懂iOS/Android，多少还需要了解些H5，也就是Hybrid的开发模式，具体改日再叙。</p>
+
+<p>今天继续扯iOS开发系列，聊聊iOS中牛逼闪闪的Core Animation，会有两个部分。先来了解下iOS中动画的层次：</p>
+
+<p><img src="/images/post/core-animation-architecture.jpg"></p>
+
+<p>最上层是UIKit，第二层是Core Anmation，然后iOS把这些动画效果用Open GL将在硬件上渲染出来。UIKit层中的动画API是作用于UIView，Core Animation层的动画API是作用于CALayer。我个人学习iOS的一个方法就是看类的头文件和相应的官方Reference文档。头文件可以很快查找出类的继承结构、属性和接口情况；Reference文档会详细介绍类的属性、方法以及需要了解的核心信息，没什么比这个文档说得更清楚了。</p>
+
+<p><a href="http://developer.apple.com/library/ios/#documentation/UIKit/Reference/UIView_Class/UIView/UIView.html">UIView Class Reference</a>中讲到UIView主要负责三件事：</p>
+
+<p>(1) 绘图和动画：利用UIKit、Core Graphics或者OpenGL ES绘制视图内容；有些UIView视图属性支持动画。</p>
+
+<p>(2) 布局和子视图管理；一个视图可以关联零个或者多个子视图，如果有子视图，还可以定义子视的大小和位置；每个视图会定义它相对于父视图的尺寸变化(resizing)规则</p>
+
+<p>(3) 事件处理：UIView继承自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。</p>
+
+<p>UIView的渲染原理可以参考WWDC 2011的Session：<a href="https://developer.apple.com/videos/wwdc/2011/">Understanding UIKit Rendering</a>以及objc.io的<a href="http://www.objc.io/issue-3/moving-pixels-onto-the-screen.html">Getting Pixels onto the Screen</a>，应该算是原理比较透彻了。</p>
+
+<p>UIView中支持动画的属性有frame，bounds，center，alpha，backgroundColor，contentStretch(iOS 6之后不推荐使用，已经是Deprecated)，transform。除了transform外，其他属性都很直白，这里transform是CGAffineTransform类型（<a href="http://developer.apple.com/library/ios/#documentation/GraphicsImaging/Reference/CGAffineTransform/Reference/reference.html">CGAffineTransform Reference</a>）。这里的transform是Affine Transform，即仿射变换，可以在二维中做各种视图变换。其本质就是个矩阵：</p>
+
+<p><img src="https://developer.apple.com/library/ios/documentation/GraphicsImaging/Reference/CGAffineTransform/Art/equation01_2x.png"></p>
+
+<p>通过CGAffineTransform.h中的各种TransformMake接口就可以轻松实现二维视图的选择、放大、移动等操作。如果要了解如何使用这些仿射变换，可以参考文档<a href="https://developer.apple.com/library/ios/documentation/GraphicsImaging/Conceptual/drawingwithquartz2d/Introduction/Introduction.html">《Quartz 2D Programming Guide》</a>。Quartz 2D是iOS上的二维渲染引擎，提供了诸如透明Layer、Path绘图、离屏渲染、颜色管理、反锯齿渲染以及PDF相关的显示。基本上我们用的到这些接口的场景也就是：二维绘图、图形编辑功能、创建和显示位图，还有PDF相关的功能。细节这里就不表了，改日再叙。</p>
+
+<p>UIView层的动画API相信大家都用过(非Block参数的UIView动画API实在太老旧，使用价值已经不大)：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (void)animateWithDuration:(NSTimeInterval)duration delay:(NSTimeInterval)delay options:(UIViewAnimationOptions)options animations:(void (^)(void))animations completion:(void (^)(BOOL finished))completion NS_AVAILABLE_IOS(4_0);
+</span><span class='line'>
+</span><span class='line'>+ (void)animateWithDuration:(NSTimeInterval)duration animations:(void (^)(void))animations completion:(void (^)(BOOL finished))completion NS_AVAILABLE_IOS(4_0); // delay = 0.0, options = 0
+</span><span class='line'>
+</span><span class='line'>+ (void)animateWithDuration:(NSTimeInterval)duration animations:(void (^)(void))animations NS_AVAILABLE_IOS(4_0); // delay = 0.0, options = 0, completion = NULL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用方法也很简单，就是在API的Block中改变需要实现动画的UIView属性值。iOS 7中又增加了针对Keyframe动画的API：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (void)animateKeyframesWithDuration:(NSTimeInterval)duration delay:(NSTimeInterval)delay options:(UIViewKeyframeAnimationOptions)options animations:(void (^)(void))animations completion:(void (^)(BOOL finished))completion NS_AVAILABLE_IOS(7_0);
+</span><span class='line'>
+</span><span class='line'>+ (void)addKeyframeWithRelativeStartTime:(double)frameStartTime relativeDuration:(double)frameDuration animations:(void (^)(void))animations NS_AVAILABLE_IOS(7_0); // start time and duration are values between 0.0 and 1.0 specifying time and duration relative to the overall time of the keyframe animation
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Core Animation实际上就是作用在UIVIew属性layer上的动画，layer的类型是CALayer，定义在QuartzCore Framework中。从CALayer.h可以发现它和UIView实在太像了。它实现了NSCoding和CAMediaTiming协议，这个CAMediaTiming协议很有意思，稍后再说。QuartzCore Framework中除了CALayer以其各种子类外，比较重要的就是CAAction、CAAnimation、CAMediaTiming和CAMediaTimingFunction。</p>
+
+<p>如何区分UIView和CALayer的关系？每个UIView都有layer属性，并且不会为空，实际是iOS系统为了图形渲染的优化，在Mac OS上NSView需要设置才会生成layer。layer不发生变化时其内容就是个CGImageRef。</p>
+
+<p>CALayer有和UIView类似的属性frame、bounds、hidden、opaque，也有以下这些特别的属性：</p>
+
+<ul>
+<li>position：</li>
+<li>zPosition</li>
+<li>anchorPoint</li>
+<li>anchorPointZ</li>
+<li>transform</li>
+<li>cornerRadius</li>
+<li>backgroundColor</li>
+<li>borderColor</li>
+<li>opacity</li>
+<li>shadowRadius</li>
+<li>shadowOffset</li>
+<li>shadowColor</li>
+<li>shadowPath</li>
+<li>shouldRasterize</li>
+<li>contents</li>
+</ul>
+
+
+<p>说完CALayer，可以直接上Example，推荐Github的<a href="https://github.com/neror/CA360">CA360</a>,常见的Core Animation类型有涉及。</p>
+
+<ul>
+<li>基础动画类型（BasicAnimation）：使用类CABasicAnimation，例子如下：</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> CABasicAnimation *pulseAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+</span><span class='line'>  pulseAnimation.duration = .5;
+</span><span class='line'>  pulseAnimation.toValue = [NSNumber numberWithFloat:1.1];
+</span><span class='line'>  pulseAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+</span><span class='line'>  pulseAnimation.autoreverses = YES;
+</span><span class='line'>  pulseAnimation.repeatCount = FLT_MAX;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>CABasicAnimation集成至CAPropertyAnimation，表示基于属性变化的动画，其中和时间相关的属性都来自于CAMediaTiming Protocol，理解起来也很直观，</p>
+
+<p>duration表示动画的持续时间，默认为0秒；</p>
+
+<p>speed表示动画的速度，用于将父对象的时间对应当当前时间，默认为1，如果设置为2，就表示动画速度是父对象的2倍；</p>
+
+<p>repeatCount表是动画重复的次数，默认为0；repeatDuration表示重复时候的持续时间，默认为0秒；autoreverses表示是否反向播放动画，默认为NO；</p>
+
+<p>beginTime表示动画开始的时间，默认为0，它是相对于父对象的时间空间而言的，即如果一个Animation Group中的一个animation设置beginTime为2，则表示这个animation在animation开始的2秒后才会开始执行。如果要在不同Layer层级之间计算时间，需要用到CALayer的API：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (CFTimeInterval)convertTime:(CFTimeInterval)t fromLayer:(CALayer *)l;
+</span><span class='line'>- (CFTimeInterval)convertTime:(CFTimeInterval)t toLayer:(CALayer *)l;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>timeOffset表示动画对当前时间的偏移量，默认为0秒；举个例子加强理解，假设有个动画有五部分:1,2,3,4,5（分别占用一秒），如果这组动画的beginTime为1，则动画播放顺序为2，3，4，5，1；如果beginTime为2，则动画播放顺序为3，4，5，1，2；以此类推。如果需要从父对象的时间控件转换到当前对象的时间控件，使用如下公式：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>t = (tp - begin) * speed + offset</span></code></pre></td></tr></table></div></figure>
+
+
+<p>timeOffset的一个用途就是同过设置speed为0和offset为一个合适的值来暂停一个layer，可以见这个例子(获取到该layer上的当前时间，将speed降为0，同时将timeoffset置为当前时间，即可暂停动画到):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>CFTimeInterval pausedTime = [layer convertTime:CACurrentMediaTime() fromLayer:nil];  
+</span><span class='line'>layer.speed = 0.0;  
+</span><span class='line'>layer.timeOffset = pausedTime;  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>fillMode表示表示动画的效果在有效期前后的赋值模式，有kCAFillModeForwards、kCAFillModeBackwards、kCAFillModeBoth、kCAFillModeRemoved几类，默认的为kCAFillModeRemoved。继续之前的假设动画有5个状态：1，2，3，4，5（分别占用一秒），如果动画的beginTime为1，同时duration为3，则实际的动画序列为2，3，4。这个动画添加到Animation Group中，Animation Group的duration为5，那么这个动画Group开始和结束的一秒内显示什么呢？如果fillMode是kCAFillModeForwards（动画属性向后拖后），则动画序列为2，3，4，5，5；如果fillMode是kCAFillModeBackwards（与kCAFillModeForwards相反），动画序列为1，2，3，4，4（最后一秒为4是由于动画不消除）；如果fillMode是kCAFillModeBoth，则动画序列为1，2，3，4，5；默认的kCAFillModeRemoved则动画序列为空，2，3，4，空。解释应该比较清楚了吧。</p>
+
+<p>回到最初的CABasicAnimation基础动画：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> CABasicAnimation *pulseAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+</span><span class='line'>  pulseAnimation.duration = .5;
+</span><span class='line'>  pulseAnimation.toValue = [NSNumber numberWithFloat:1.1];
+</span><span class='line'>  pulseAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+</span><span class='line'>  pulseAnimation.autoreverses = YES;
+</span><span class='line'>  pulseAnimation.repeatCount = FLT_MAX;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第一句<code>+ (instancetype)animationWithKeyPath:(NSString *)path;</code> 表示需要修改的Layer属性，例如“position”，”tansform.scale”，可以对哪些属性进行修改，可以参考<a href="">官方文档</a>,后面几句设置的duration、autoreverses、repeatCount都已经解释过，toValue是设置动画属性的目标值，timingFunction是至动画的时间函数，就是个简单的贝塞尔曲线（Bezier Curve）,如下图所示：</p>
+
+<p><img src="https://developer.apple.com/library/ios/documentation/cocoa/conceptual/animation_types_timing/Art/standardtiming_2x.png"></p>
+
+<p>分别代表kCAMediaTimingFunctionLinear,
+kCAMediaTimingFunctionEaseIn,
+kCAMediaTimingFunctionEaseOut,
+kCAMediaTimingFunctionEaseInEaseOut四类时间函数，简单点理解就是动画是匀速的(kCAMediaTimingFunctionLinear)还是先快后慢（kCAMediaTimingFunctionEaseOut），还是先慢后快（kCAMediaTimingFunctionEaseIn），还是慢快慢（kCAMediaTimingFunctionEaseInEaseOut）。kCAMediaTimingFunctionDefault对应的时间函数就是四个点决定的三次贝塞尔曲线：</p>
+
+<p><img src="http://ww2.sinaimg.cn/large/65cc0af7gw1dxm21gxjr0j.jpg"></p>
+
+<p>自定义时间函数当然也是可以的，参考<a href="http://stackoverflow.com/questions/5161465/how-to-create-custom-easing-function-with-core-animation">How to create custom easing function with Core Animation</a></p>
+
+<p>如果时间函数无法用简单的贝塞尔曲线表达，那么就得用到另一种动画了CAKeyframeAnimation关键帧动画，Part 2再继续聊。关于时间函数可以参考卢克的Blog <a href="http://geeklu.com/2012/09/animation-in-ios/">漫谈iOS Animation</a>或者官方文档<a href="https://developer.apple.com/library/ios/documentation/cocoa/conceptual/animation_types_timing/articles/PropertyAnimations.html">Animation Types and Timing Programming Guide</a></p>
+
+<p>Example Source：<a href="https://github.com/neror/CA360">CA360</a></p>
+
+		
+		
+	</div>
+
+</article>
 
 
     <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
@@ -519,143 +871,6 @@ dispatch_sync和dispatch_after是阻塞式的，会一直等到添加的工作�
 
 </article>
 
-
-    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
-	<div class="meta">
-		<div class="date">
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-06-27T00:32:00+08:00" data-updated="true" itemprop="datePublished">Jun 27<span>th</span>, 2013</time></div>
-		<div class="tags">
-
-
-	<a class='category' href='/category/ios/'>iOS</a>
-
-
-</div>
-		
-	</div>
-	<h1 class="title" itemprop="name"><a href="/2013/06/retain-cycle-in-block/" itemprop="url">Block的引用循环问题 (ARC & non-ARC)</a></h1>
-	<div class="entry-content" itemprop="articleBody">
-		<p>2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持，第一次使用Block感觉满简单好用的，但是慢慢也遇到很多坑。本文聊聊ARC和non-ARC下Block使用中的引用循环问题，最近遇到了好几次这种问题，还是深入记录下。先来套<a href="http://blog.parse.com/2013/02/05/objective-c-blocks-quiz/">题目</a>热热身，貌似能够全部答对的人蛮少的</p>
-
-<h3>Block实现原理</h3>
-
-<p>首先探究下Block的实现原理，由于Objective-C是C语言的超集，既然OC中的NSObject对象其实是由C语言的struct+isa指针实现的，那么Block的内部实现估计也一样，以下三篇Blog对Block的实现机制做了详细研究：</p>
-
-<ul>
-<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-1/">A look inside blocks: Episode 1</a></li>
-<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-2/">A look inside blocks: Episode 2</a></li>
-<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-3/">A look inside blocks: Episode 3</a></li>
-</ul>
-
-
-<p>虽然实现细节看着头痛，不过发现Block果然是和OC中的NSObject类似，也是用struct实现出来的东西。这个是LLVM项目compiler-rt分析的block头文<a href="https://llvm.org/svn/llvm-project/compiler-rt/trunk/BlocksRuntime/Block_private.h">Block_private.h</a>头文件中关于Block的struct声明：</p>
-
-
-		
-		<a href="/2013/06/retain-cycle-in-block/" class="more-link">继续阅读</a>
-	</div>
-
-</article>
-
-
-    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
-	<div class="meta">
-		<div class="date">
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-06-24T16:15:00+08:00" data-updated="true" itemprop="datePublished">Jun 24<span>th</span>, 2013</time></div>
-		<div class="tags">
-
-
-	<a class='category' href='/category/ios/'>iOS</a>
-
-
-</div>
-		
-	</div>
-	<h1 class="title" itemprop="name"><a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" itemprop="url">一个异步网络请求的坑：关于NSURLConnection和NSRunLoopCommonModes</a></h1>
-	<div class="entry-content" itemprop="articleBody">
-		<p>我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有<a href="https://github.com/pokeb/asi-http-request/">ASIHTTPRequest</a>（已经停止开发维护）和<a href="https://github.com/AFNetworking/AFNetworking">AFNetWorking</a>。两者实现异步网络请求的方式不太相同，ASIHTTPRequest使用的是NSOperation+CFNetWork API实现异步网络请求，但是在一个公共独立子线程上去执行网络请求：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>+ (NSThread *)threadForRequest:(ASIHTTPRequest *)request
-</span><span class='line'>{
-</span><span class='line'>  if (networkThread == nil) {
-</span><span class='line'>      @synchronized(self) {
-</span><span class='line'>          if (networkThread == nil) {
-</span><span class='line'>              networkThread = [[NSThread alloc] initWithTarget:self selector:@selector(runRequests) object:nil];
-</span><span class='line'>              [networkThread start];
-</span><span class='line'>          }
-</span><span class='line'>      }
-</span><span class='line'>  }
-</span><span class='line'>  return networkThread;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>AFNetWorking则是包装了NSOperation和NSURLConnection技术实现异步网络请求，它在NSOperation中真正启动NSURLConnection网络请求时，同样生成了一个公共独立子线程来Kick off网络请求：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>+ (NSThread *)networkRequestThread {
-</span><span class='line'>    static NSThread *_networkRequestThread = nil;
-</span><span class='line'>    static dispatch_once_t oncePredicate;
-</span><span class='line'>    dispatch_once(&oncePredicate, ^{
-</span><span class='line'>        _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];
-</span><span class='line'>        [_networkRequestThread start];
-</span><span class='line'>    });
-</span><span class='line'>
-</span><span class='line'>    return _networkRequestThread;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-
-		
-		<a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" class="more-link">继续阅读</a>
-	</div>
-
-</article>
-
 </div>
 <nav id="pagenavi">
     
@@ -666,7 +881,7 @@ dispatch_sync和dispatch_after是阻塞式的，会一直等到添加的工作�
 </nav></div>
 			</div>
 			<footer id="footer" class="inner"><p>
-  Copyright &copy; 2013 - hrchen -
+  Copyright &copy; 2014 - hrchen -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

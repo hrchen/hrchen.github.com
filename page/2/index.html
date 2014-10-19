@@ -7,7 +7,7 @@
 	<meta name="author" content="hrchen">
 
 	
-	<meta name="description" content="Jun 2nd, 2013 iOS iOS多线程编程Part 1/3 - NSThread & Run Loop 前言 多线程的价值无需赘述，对于App性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外， &hellip;">
+	<meta name="description" content="Jun 27th, 2013 iOS Block的引用循环问题 (ARC & non-ARC) 2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持， &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -47,7 +47,7 @@
 </hgroup>
 
 <p class="subtitle">Mobile Dev (dr.hrchen@gmail.com)</p>
-<p class="subtitle">CS Ph.D，专注移动产品开发，了解点后端</p>
+<p class="subtitle">CS Ph.D，专注移动产品开发</p>
 <nav id="main-nav"><ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
@@ -86,6 +86,143 @@
 			<div class="mid-col-container">
 				<div id="content" class="inner">
 <div itemscope itemtype="http://schema.org/Blog">
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-27T00:32:00+08:00" data-updated="true" itemprop="datePublished">Jun 27<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/retain-cycle-in-block/" itemprop="url">Block的引用循环问题 (ARC & non-ARC)</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持，第一次使用Block感觉满简单好用的，但是慢慢也遇到很多坑。本文聊聊ARC和non-ARC下Block使用中的引用循环问题，最近遇到了好几次这种问题，还是深入记录下。先来套<a href="http://blog.parse.com/2013/02/05/objective-c-blocks-quiz/">题目</a>热热身，貌似能够全部答对的人蛮少的</p>
+
+<h3>Block实现原理</h3>
+
+<p>首先探究下Block的实现原理，由于Objective-C是C语言的超集，既然OC中的NSObject对象其实是由C语言的struct+isa指针实现的，那么Block的内部实现估计也一样，以下三篇Blog对Block的实现机制做了详细研究：</p>
+
+<ul>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-1/">A look inside blocks: Episode 1</a></li>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-2/">A look inside blocks: Episode 2</a></li>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-3/">A look inside blocks: Episode 3</a></li>
+</ul>
+
+
+<p>虽然实现细节看着头痛，不过发现Block果然是和OC中的NSObject类似，也是用struct实现出来的东西。这个是LLVM项目compiler-rt分析的block头文<a href="https://llvm.org/svn/llvm-project/compiler-rt/trunk/BlocksRuntime/Block_private.h">Block_private.h</a>头文件中关于Block的struct声明：</p>
+
+
+		
+		<a href="/2013/06/retain-cycle-in-block/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-24T16:15:00+08:00" data-updated="true" itemprop="datePublished">Jun 24<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" itemprop="url">一个异步网络请求的坑：关于NSURLConnection和NSRunLoopCommonModes</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有<a href="https://github.com/pokeb/asi-http-request/">ASIHTTPRequest</a>（已经停止开发维护）和<a href="https://github.com/AFNetworking/AFNetworking">AFNetWorking</a>。两者实现异步网络请求的方式不太相同，ASIHTTPRequest使用的是NSOperation+CFNetWork API实现异步网络请求，但是在一个公共独立子线程上去执行网络请求：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (NSThread *)threadForRequest:(ASIHTTPRequest *)request
+</span><span class='line'>{
+</span><span class='line'>  if (networkThread == nil) {
+</span><span class='line'>      @synchronized(self) {
+</span><span class='line'>          if (networkThread == nil) {
+</span><span class='line'>              networkThread = [[NSThread alloc] initWithTarget:self selector:@selector(runRequests) object:nil];
+</span><span class='line'>              [networkThread start];
+</span><span class='line'>          }
+</span><span class='line'>      }
+</span><span class='line'>  }
+</span><span class='line'>  return networkThread;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>AFNetWorking则是包装了NSOperation和NSURLConnection技术实现异步网络请求，它在NSOperation中真正启动NSURLConnection网络请求时，同样生成了一个公共独立子线程来Kick off网络请求：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (NSThread *)networkRequestThread {
+</span><span class='line'>    static NSThread *_networkRequestThread = nil;
+</span><span class='line'>    static dispatch_once_t oncePredicate;
+</span><span class='line'>    dispatch_once(&oncePredicate, ^{
+</span><span class='line'>        _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];
+</span><span class='line'>        [_networkRequestThread start];
+</span><span class='line'>    });
+</span><span class='line'>
+</span><span class='line'>    return _networkRequestThread;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+
+		
+		<a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
 
 
     <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
@@ -260,7 +397,7 @@
 </nav></div>
 			</div>
 			<footer id="footer" class="inner"><p>
-  Copyright &copy; 2013 - hrchen -
+  Copyright &copy; 2014 - hrchen -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 
