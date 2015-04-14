@@ -8,7 +8,7 @@ categories: iOS,Android,Performance
 
 2014年中接手携程无线App的框架和基础研发工作之后，首要的工作就是客户端性能优化，尤其是其网络服务性能，是所有App优化工作的重中之重。首先介绍下携程App的网络服务架构。下图是携程App的架构设计（典型的层次化设计）：
 
-{% img /images/post/ctrip_app_architecture.png %}
+{% img /images/post/ctrip_app_architecure.png %}
 
 由于携程业务很多，开发资源上无法全部使用Native来实现业务逻辑，因此有相当一部分频道是基于Hybrid来实现。网络通讯属于基础设施层的一部分，提供给整个App统一的网络服务。
 
