@@ -3,7 +3,7 @@ layout: post
 title: "iOS App性能优化"
 date: 2013-05-29 14:20
 comments: true
-categories: iOS
+categories: iOS,Performance
 ---
 
 ### iOS App的性能关注点
