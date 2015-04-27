@@ -1,0 +1,621 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>All about mobile things.</title>
+	<meta name="author" content="hrchen">
+
+	
+	<meta name="description" content="Jul 2nd, 2013 iOS iOS多线程编程Part 3/3 - GCD 前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。 &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="All about mobile things." type="application/atom+xml">
+	
+	<link rel="canonical" href="http://hrchen.com/page/2/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		$(function(){
+			$('.profilepic').append("<img src='http://www.gravatar.com/avatar/" + MD5("dr.hrchen@gmail.com") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+		});
+	</script>
+</div>
+<hgroup>
+  <h1><a href="/">All about mobile things.</a></h1>
+</hgroup>
+
+<p class="subtitle">hrchen's blogging (dr.hrchen@gmail.com)</p>
+<p class="subtitle">CS Ph.D，专注移动产品开发，现任携程无线开发总监</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		<a class="weibo" href="http://www.weibo.com/hrchen" title="Sina Weibo">Weibo</a>
+		
+		
+		
+		
+		<a class="twitter" href="http://twitter.com/hrchen" title="Twitter">Twitter</a>
+		
+		
+		<a class="github" href="https://github.com/hrchen" title="GitHub">GitHub</a>
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner">
+<div itemscope itemtype="http://schema.org/Blog">
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-02T21:20:00+08:00" data-updated="true" itemprop="datePublished">Jul 2<span>nd</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/multi-threading-programming-of-ios-part-3/" itemprop="url">iOS多线程编程Part 3/3 - GCD</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>前两部分介绍了NSThread、NSRunLoop和NSOperation，本文聊聊2011年WWDC时推出的神器GCD。GCD: Grand Central Dispatch，是一组用于实现并发编程的C接口。GCD是基于Objective-C的Block特性开发的，基本业务逻辑和NSOperation很像，都是将工作添加到一个队列，由系统来负责线程的生成和调度。由于是直接使用Block，因此比NSOperation子类使用起来更方便，大大降低了多线程开发的门槛。另外，GCD是开源的喔：<a href="http://libdispatch.macosforge.org/">libdispatch</a>。</p>
+
+<h3>基本用法</h3>
+
+<p>首先示例：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+</span><span class='line'>    [self doTask];
+</span><span class='line'>    NSLog(@"Fisinished");
+</span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
+
+
+<p>GCD的调用接口非常简单，就是将Job提交至Queue中，主要的提交Job接口为：</p>
+
+<ul>
+<li>dispatch_sync(queue, block)同步提交job<em> dispatch_async (queue, block) 异步提交job</em> dispatch_after(time, queue, block) 同步延迟提交job
+其中第一个参数类型是dispatch_queue_t，就是一个表示队列的数据结构<code>typedef struct dispatch_queue_s *dispatch_queue_t;</code>；block就是表示任务的Block<code>typedef void (^dispatch_block_t)( void);</code>。</li>
+</ul>
+
+
+<p>dispatch_async函数是异步非阻塞的，调用后会立刻返回，工作由系统在线程池中分配线程去执行工作。
+dispatch_sync和dispatch_after是阻塞式的，会一直等到添加的工作完成后才会返回。</p>
+
+<p>除了添加Block到Dispatch Queue，还有添加函数到Dispatch Queue的接口，例如dispatch_async对应的有dispatch_async_f：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dispatch_async_f(dispatch_queue_t queue,
+</span><span class='line'>               void *context,
+</span><span class='line'>               dispatch_function_t work);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中第三个参数就是个函数指针，即<code>typedef void (*dispatch_function_t)(void *);</code>；第二个参数是传给这个函数的参数。</p>
+
+
+		
+		<a href="/2013/07/multi-threading-programming-of-ios-part-3/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-30T04:20:00+08:00" data-updated="true" itemprop="datePublished">Jun 30<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/tricky-nsurlconnectiondelegate/" itemprop="url">一个NSURLConnectionDelegate的坑</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>NSURLConnection的坑还是蛮多的，上次是<a href="http://www.hrchen.com/2013/06/nsurlconnection-with-nsrunloopcommonmodes/">RunLoopMode的问题</a>，这次是关于NSURLConnectionDelegate。</p>
+
+<p>NSURLConnection的代理Protocol定义有三类：NSURLConnectionDelegate、NSURLConnectionDataDelegate和NSURLConnectionDownloadDelegate。</p>
+
+<ul>
+<li>NSURLConnectionDelegate：所有类型NSURLConnection的基础代理方法，都是Optional的方法，主要是涉及SSL/TSL加密的相关接口。</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>@optional
+</span><span class='line'>- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
+</span><span class='line'>- (BOOL)connectionShouldUseCredentialStorage:(NSURLConnection *)connection;
+</span><span class='line'>- (void)connection:(NSURLConnection *)connection willSendRequestForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>NSURLConnectionDataDelegate：用于将网络请求的数据存放到内存中(以NSData的形式)的代理方法。所有方法都是Optional的。</li>
+</ul>
+
+
+
+		
+		<a href="/2013/06/tricky-nsurlconnectiondelegate/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-28T23:59:00+08:00" data-updated="true" itemprop="datePublished">Jun 28<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/multi-threading-programming-of-ios-part-2/" itemprop="url">iOS多线程编程Part 2/3 - NSOperation</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>多线程编程Part 1介绍了NSThread以及NSRunLoop，这篇Blog介绍另一种并发编程技术：NSOPeration。</p>
+
+<h3>NSOperation &amp; NSOperationQueue</h3>
+
+<p>从头文件NSOperation.h来看接口是非常的简洁，NSOperation本身是一个抽象类，定义了一个要执行的工作，NSOperationQueue是一个工作队列，当工作加入到队列后，NSOperationQueue会自动按照优先顺序及工作的从属依赖关系(如果有的话)组织执行。</p>
+
+<p>NSOperation是没法直接使用的，它只是提供了一个工作的基本逻辑，具体实现还是需要你通过定义自己的NSOperation子类来获得。如果有必要也可以不将NSOperation加入到一个NSOperationQueue中去执行，直接调用起<code>-start</code>也可以直接执行。</p>
+
+
+		
+		<a href="/2013/06/multi-threading-programming-of-ios-part-2/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-27T00:32:00+08:00" data-updated="true" itemprop="datePublished">Jun 27<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/retain-cycle-in-block/" itemprop="url">Block的引用循环问题 (ARC & non-ARC)</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>2010年WWDC发布iOS4时Apple对Objective-C进行了一次重要的升级：支持Block。说到底这东西就是闭包，其他高级语音例如Java和C++已有支持，第一次使用Block感觉满简单好用的，但是慢慢也遇到很多坑。本文聊聊ARC和non-ARC下Block使用中的引用循环问题，最近遇到了好几次这种问题，还是深入记录下。先来套<a href="http://blog.parse.com/2013/02/05/objective-c-blocks-quiz/">题目</a>热热身，貌似能够全部答对的人蛮少的</p>
+
+<h3>Block实现原理</h3>
+
+<p>首先探究下Block的实现原理，由于Objective-C是C语言的超集，既然OC中的NSObject对象其实是由C语言的struct+isa指针实现的，那么Block的内部实现估计也一样，以下三篇Blog对Block的实现机制做了详细研究：</p>
+
+<ul>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-1/">A look inside blocks: Episode 1</a></li>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-2/">A look inside blocks: Episode 2</a></li>
+<li><a href="http://www.galloway.me.uk/2012/10/a-look-inside-blocks-episode-3/">A look inside blocks: Episode 3</a></li>
+</ul>
+
+
+<p>虽然实现细节看着头痛，不过发现Block果然是和OC中的NSObject类似，也是用struct实现出来的东西。这个是LLVM项目compiler-rt分析的block头文<a href="https://llvm.org/svn/llvm-project/compiler-rt/trunk/BlocksRuntime/Block_private.h">Block_private.h</a>头文件中关于Block的struct声明：</p>
+
+
+		
+		<a href="/2013/06/retain-cycle-in-block/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-24T16:15:00+08:00" data-updated="true" itemprop="datePublished">Jun 24<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" itemprop="url">一个异步网络请求的坑：关于NSURLConnection和NSRunLoopCommonModes</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>我们开发App时，常常需要异步下载网络资源或者实现REST API调用，目前流行的HTTP库有<a href="https://github.com/pokeb/asi-http-request/">ASIHTTPRequest</a>（已经停止开发维护）和<a href="https://github.com/AFNetworking/AFNetworking">AFNetWorking</a>。两者实现异步网络请求的方式不太相同，ASIHTTPRequest使用的是NSOperation+CFNetWork API实现异步网络请求，但是在一个公共独立子线程上去执行网络请求：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (NSThread *)threadForRequest:(ASIHTTPRequest *)request
+</span><span class='line'>{
+</span><span class='line'>  if (networkThread == nil) {
+</span><span class='line'>      @synchronized(self) {
+</span><span class='line'>          if (networkThread == nil) {
+</span><span class='line'>              networkThread = [[NSThread alloc] initWithTarget:self selector:@selector(runRequests) object:nil];
+</span><span class='line'>              [networkThread start];
+</span><span class='line'>          }
+</span><span class='line'>      }
+</span><span class='line'>  }
+</span><span class='line'>  return networkThread;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>AFNetWorking则是包装了NSOperation和NSURLConnection技术实现异步网络请求，它在NSOperation中真正启动NSURLConnection网络请求时，同样生成了一个公共独立子线程来Kick off网络请求：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ (NSThread *)networkRequestThread {
+</span><span class='line'>    static NSThread *_networkRequestThread = nil;
+</span><span class='line'>    static dispatch_once_t oncePredicate;
+</span><span class='line'>    dispatch_once(&oncePredicate, ^{
+</span><span class='line'>        _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];
+</span><span class='line'>        [_networkRequestThread start];
+</span><span class='line'>    });
+</span><span class='line'>
+</span><span class='line'>    return _networkRequestThread;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+
+		
+		<a href="/2013/06/nsurlconnection-with-nsrunloopcommonmodes/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-02T23:11:00+08:00" data-updated="true" itemprop="datePublished">Jun 2<span>nd</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/06/multi-threading-programming-of-ios-part-1/" itemprop="url">iOS多线程编程Part 1/3 - NSThread & Run Loop</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<h3>前言</h3>
+
+<p>多线程的价值无需赘述，对于App性能和用户体验都有着至关重要的意义，在iOS开发中，Apple提供了不同的技术支持多线程编程，除了跨平台的pthread之外，还提供了NSThread、NSOperationQueue、GCD等多线程技术，从本篇Blog开始介绍这几种多线程技术的细节。</p>
+
+<p>对于pthread这种跨平台的多线程技术，这本<a href="http://www.amazon.com/Programming-POSIX-Threads-David-Butenhof/dp/0201633922/">Programming with POSIX Threads</a>做了详细介绍，不再提及。</p>
+
+<h3>NSThread</h3>
+
+<p>使用NSThead创建线程有很多方法：</p>
+
+<ul>
+<li>+detachNewThreadSelector:toTarget:withObject:类方法直接生成一个子线程</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="p">[</span><span class="n">NSThread</span> <span class="nl">detachNewThreadSelector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">threadRoutine:</span><span class="p">)</span> <span class="nl">toTarget:</span><span class="n">self</span> <span class="nl">withObject:</span><span class="nb">nil</span><span class="p">];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>创建一个NSThread类实例，然后调用start方法。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">NSThread</span><span class="o">*</span> <span class="n">aThread</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSThread</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithTarget:</span><span class="n">self</span> <span class="nl">selector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">threadRoutine:</span><span class="p">)</span> <span class="nl">object:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'><span class="p">[</span><span class="n">aThread</span> <span class="n">start</span><span class="p">];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>调用NSObject的<code>+performSelectorInBackground:withObject:</code>方法生成子线程。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="p">[</span><span class="n">myObj</span> <span class="nl">performSelectorInBackground:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">threadRoutine:</span><span class="p">)</span> <span class="nl">withObject:</span><span class="nb">nil</span><span class="p">];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>创建一个NSThread子类，然后调用子类实例的start方法，。</li>
+</ul>
+
+
+
+		
+		<a href="/2013/06/multi-threading-programming-of-ios-part-1/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-29T14:20:00+08:00" data-updated="true" itemprop="datePublished">May 29<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios-performance/'>iOS,Performance</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/05/performance-with-instruments/" itemprop="url">iOS App性能优化</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<h3>iOS App的性能关注点</h3>
+
+<p>虽然iPhone的机能越来越好，但是app的功能也越来越复杂，性能从来都是移动开发的核心关注点之一。我们说一个app性能好，不是简单指感觉运行速度快，而应该是指应用启动快速、UI反馈响应及时、列表滚动操作流畅、内存使用合理，当然更不能随随便便Crash啦。工程师开发应用时除了在设计上要避免性能“坑”的出现，在实际遇到“坑”时也要能很快定位原因所在。定位性能问题原因当然不能靠猜，合理的方法是使用工具测量评估出投资回报最高的问题点，然后再加以优化。</p>
+
+<p>本文会从以下几点介绍如何分析和优化iOS app的性能：启动时间、用户响应、内存、图形动画、文件和网络I/O。其中会用到Apple出品的性能分析神器“Instruments”。</p>
+
+<h3>启动时间</h3>
+
+<p>应用启动时间长短对用户第一次体验至关重要，同时系统对应用的启动、恢复等状态的运行时间也有严格的要求，在应用超时的情况下系统会直接关闭应用。以下是几个常见场景下系统对app运行时间的要求：
+* Launch    20秒<em> Resume   10秒</em> Suspend  10秒<em> Quit 6秒</em> Background Task   10分钟</p>
+
+
+		
+		<a href="/2013/05/performance-with-instruments/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-26T22:27:00+08:00" data-updated="true" itemprop="datePublished">May 26<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/xian-che/'>闲扯</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/05/my-first-blog/" itemprop="url">重新开始写Blog</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>最近好几次被问到有没有个人Blog，惭愧=。=~~~~虽然曾经搭过WordPress、注册过Blogger，都没能坚持下来，其实写Blog对技术人员来说是很好的总结方式，值得坚持。</p>
+
+<p>既然要整blog，当然要用正夯的工具，目前最方便的就是github pages啦，搭个<a href="https://github.com/imathis/octopress">octopress</a>，找个漂亮<a href="https://github.com/shashankmehta/greyshade">主题</a>，直接上！发现markdown写起来蛮像读书时写论文用的<a href="http://www.latex-project.org/">LaTex</a>，可以让你专注于码字，而不是格式。</p>
+
+		
+		
+	</div>
+
+</article>
+
+</div>
+<nav id="pagenavi">
+    
+        <a href="/" class="prev">Prev</a>
+    
+    
+    <div class="center"><a href="/blog/archives">Blog Archives</a></div>
+</nav></div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2015 - hrchen -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'hrchen';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+	<script type="text/javascript">
+		var _gaq = _gaq || [];
+		_gaq.push(['_setAccount', 'UA-42768336-1']);
+		_gaq.push(['_trackPageview']);
+
+		(function() {
+			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		})();
+	</script>
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>

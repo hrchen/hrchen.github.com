@@ -1,0 +1,556 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: iOS | All about mobile things.]]></title>
+  <link href="http://hrchen.com/category/ios/atom.xml" rel="self"/>
+  <link href="http://hrchen.com/"/>
+  <updated>2015-04-27T18:07:04+08:00</updated>
+  <id>http://hrchen.com/</id>
+  <author>
+    <name><![CDATA[hrchen]]></name>
+    <email><![CDATA[dr.hrchen@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Core Animation编程 Part1/2]]></title>
+    <link href="http://hrchen.com/2014/03/talking-about-core-animation-part-1/"/>
+    <updated>2014-03-12T18:13:00+08:00</updated>
+    <id>http://hrchen.com/2014/03/talking-about-core-animation-part-1</id>
+    <content type="html"><![CDATA[<p>那啥，一忙起来就彻底忘记更新Blog了，目前移动产品开发也有了新的趋势，继续守在一个平台越来越难混了，HTML5在国内App开发中也逐步流行，因此未来移动开发工程师不仅仅要懂iOS/Android，多少还需要了解些H5，也就是Hybrid的开发模式，具体改日再叙。</p>
+
+<p>今天继续扯iOS开发系列，聊聊iOS中牛逼闪闪的Core Animation，会有两个部分。先来了解下iOS中动画的层次：</p>
+
+<p><img src="/images/post/core-animation-architecture.jpg"></p>
+
+<p>最上层是UIKit，第二层是Core Anmation，然后iOS把这些动画效果用Open GL将在硬件上渲染出来。UIKit层中的动画API是作用于UIView，Core Animation层的动画API是作用于CALayer。我个人学习iOS的一个方法就是看类的头文件和相应的官方Reference文档。头文件可以很快查找出类的继承结构、属性和接口情况；Reference文档会详细介绍类的属性、方法以及需要了解的核心信息，没什么比这个文档说得更清楚了。</p>
+
+<p><a href="http://developer.apple.com/library/ios/#documentation/UIKit/Reference/UIView_Class/UIView/UIView.html">UIView Class Reference</a>中讲到UIView主要负责三件事：</p>
+
+<p>(1) 绘图和动画：利用UIKit、Core Graphics或者OpenGL ES绘制视图内容；有些UIView视图属性支持动画。</p>
+
+<p>(2) 布局和子视图管理；一个视图可以关联零个或者多个子视图，如果有子视图，还可以定义子视的大小和位置；每个视图会定义它相对于父视图的尺寸变化(resizing)规则</p>
+
+<p>(3) 事件处理：UIView继承自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。</p>
+
+<!--more-->
+
+
+<p>UIView的渲染原理可以参考WWDC 2011的Session：<a href="https://developer.apple.com/videos/wwdc/2011/">Understanding UIKit Rendering</a>以及objc.io的<a href="http://www.objc.io/issue-3/moving-pixels-onto-the-screen.html">Getting Pixels onto the Screen</a>，应该算是原理比较透彻了。</p>
+
+<p>UIView中支持动画的属性有frame，bounds，center，alpha，backgroundColor，contentStretch(iOS 6之后不推荐使用，已经是Deprecated)，transform。除了transform外，其他属性都很直白，这里transform是CGAffineTransform类型（<a href="http://developer.apple.com/library/ios/#documentation/GraphicsImaging/Reference/CGAffineTransform/Reference/reference.html">CGAffineTransform Reference</a>）。这里的transform是Affine Transform，即仿射变换，可以在二维中做各种视图变换。其本质就是个矩阵：</p>
+
+<p><img src="https://developer.apple.com/library/ios/documentation/GraphicsImaging/Reference/CGAffineTransform/Art/equation01_2x.png"></p>
+
+<p>通过CGAffineTransform.h中的各种TransformMake接口就可以轻松实现二维视图的选择、放大、移动等操作。如果要了解如何使用这些仿射变换，可以参考文档<a href="https://developer.apple.com/library/ios/documentation/GraphicsImaging/Conceptual/drawingwithquartz2d/Introduction/Introduction.html">《Quartz 2D Programming Guide》</a>。Quartz 2D是iOS上的二维渲染引擎，提供了诸如透明Layer、Path绘图、离屏渲染、颜色管理、反锯齿渲染以及PDF相关的显示。基本上我们用的到这些接口的场景也就是：二维绘图、图形编辑功能、创建和显示位图，还有PDF相关的功能。细节这里就不表了，改日再叙。</p>
+
+<p>UIView层的动画API相信大家都用过(非Block参数的UIView动画API实在太老旧，使用价值已经不大)：</p>
+
+<p>```
++ (void)animateWithDuration:(NSTimeInterval)duration delay:(NSTimeInterval)delay options:(UIViewAnimationOptions)options animations:(void (^)(void))animations completion:(void (^)(BOOL finished))completion NS_AVAILABLE_IOS(4_0);</p>
+
+<ul>
+<li><p>(void)animateWithDuration:(NSTimeInterval)duration animations:(void (^)(void))animations completion:(void (^)(BOOL finished))completion NS_AVAILABLE_IOS(4_0); // delay = 0.0, options = 0</p></li>
+<li><p>(void)animateWithDuration:(NSTimeInterval)duration animations:(void (^)(void))animations NS_AVAILABLE_IOS(4_0); // delay = 0.0, options = 0, completion = NULL
+```
+使用方法也很简单，就是在API的Block中改变需要实现动画的UIView属性值。iOS 7中又增加了针对Keyframe动画的API：</p></li>
+</ul>
+
+
+<p>```
++ (void)animateKeyframesWithDuration:(NSTimeInterval)duration delay:(NSTimeInterval)delay options:(UIViewKeyframeAnimationOptions)options animations:(void (^)(void))animations completion:(void (^)(BOOL finished))completion NS_AVAILABLE_IOS(7_0);</p>
+
+<ul>
+<li>(void)addKeyframeWithRelativeStartTime:(double)frameStartTime relativeDuration:(double)frameDuration animations:(void (^)(void))animations NS_AVAILABLE_IOS(7_0); // start time and duration are values between 0.0 and 1.0 specifying time and duration relative to the overall time of the keyframe animation</li>
+</ul>
+
+
+<p>```</p>
+
+<p>Core Animation实际上就是作用在UIVIew属性layer上的动画，layer的类型是CALayer，定义在QuartzCore Framework中。从CALayer.h可以发现它和UIView实在太像了。它实现了NSCoding和CAMediaTiming协议，这个CAMediaTiming协议很有意思，稍后再说。QuartzCore Framework中除了CALayer以其各种子类外，比较重要的就是CAAction、CAAnimation、CAMediaTiming和CAMediaTimingFunction。</p>
+
+<p>如何区分UIView和CALayer的关系？每个UIView都有layer属性，并且不会为空，实际是iOS系统为了图形渲染的优化，在Mac OS上NSView需要设置才会生成layer。layer不发生变化时其内容就是个CGImageRef。</p>
+
+<p>CALayer有和UIView类似的属性frame、bounds、hidden、opaque，也有以下这些特别的属性：</p>
+
+<ul>
+<li>position：</li>
+<li>zPosition</li>
+<li>anchorPoint</li>
+<li>anchorPointZ</li>
+<li>transform</li>
+<li>cornerRadius</li>
+<li>backgroundColor</li>
+<li>borderColor</li>
+<li>opacity</li>
+<li>shadowRadius</li>
+<li>shadowOffset</li>
+<li>shadowColor</li>
+<li>shadowPath</li>
+<li>shouldRasterize</li>
+<li>contents</li>
+</ul>
+
+
+<p>说完CALayer，可以直接上Example，推荐Github的<a href="https://github.com/neror/CA360">CA360</a>,常见的Core Animation类型有涉及。</p>
+
+<ul>
+<li>基础动画类型（BasicAnimation）：使用类CABasicAnimation，例子如下：</li>
+</ul>
+
+
+<p>```
+ CABasicAnimation *pulseAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+  pulseAnimation.duration = .5;
+  pulseAnimation.toValue = [NSNumber numberWithFloat:1.1];
+  pulseAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+  pulseAnimation.autoreverses = YES;
+  pulseAnimation.repeatCount = FLT_MAX;</p>
+
+<p>```</p>
+
+<p>CABasicAnimation集成至CAPropertyAnimation，表示基于属性变化的动画，其中和时间相关的属性都来自于CAMediaTiming Protocol，理解起来也很直观，</p>
+
+<p>duration表示动画的持续时间，默认为0秒；</p>
+
+<p>speed表示动画的速度，用于将父对象的时间对应当当前时间，默认为1，如果设置为2，就表示动画速度是父对象的2倍；</p>
+
+<p>repeatCount表是动画重复的次数，默认为0；repeatDuration表示重复时候的持续时间，默认为0秒；autoreverses表示是否反向播放动画，默认为NO；</p>
+
+<p>beginTime表示动画开始的时间，默认为0，它是相对于父对象的时间空间而言的，即如果一个Animation Group中的一个animation设置beginTime为2，则表示这个animation在animation开始的2秒后才会开始执行。如果要在不同Layer层级之间计算时间，需要用到CALayer的API：</p>
+
+<p><code>
+- (CFTimeInterval)convertTime:(CFTimeInterval)t fromLayer:(CALayer *)l;
+- (CFTimeInterval)convertTime:(CFTimeInterval)t toLayer:(CALayer *)l;
+</code></p>
+
+<p>timeOffset表示动画对当前时间的偏移量，默认为0秒；举个例子加强理解，假设有个动画有五部分:1,2,3,4,5（分别占用一秒），如果这组动画的beginTime为1，则动画播放顺序为2，3，4，5，1；如果beginTime为2，则动画播放顺序为3，4，5，1，2；以此类推。如果需要从父对象的时间控件转换到当前对象的时间控件，使用如下公式：</p>
+
+<p><code>
+t = (tp - begin) * speed + offset
+</code>
+timeOffset的一个用途就是同过设置speed为0和offset为一个合适的值来暂停一个layer，可以见这个例子(获取到该layer上的当前时间，将speed降为0，同时将timeoffset置为当前时间，即可暂停动画到):</p>
+
+<p><code>
+CFTimeInterval pausedTime = [layer convertTime:CACurrentMediaTime() fromLayer:nil];  
+layer.speed = 0.0;  
+layer.timeOffset = pausedTime;  
+</code></p>
+
+<p>fillMode表示表示动画的效果在有效期前后的赋值模式，有kCAFillModeForwards、kCAFillModeBackwards、kCAFillModeBoth、kCAFillModeRemoved几类，默认的为kCAFillModeRemoved。继续之前的假设动画有5个状态：1，2，3，4，5（分别占用一秒），如果动画的beginTime为1，同时duration为3，则实际的动画序列为2，3，4。这个动画添加到Animation Group中，Animation Group的duration为5，那么这个动画Group开始和结束的一秒内显示什么呢？如果fillMode是kCAFillModeForwards（动画属性向后拖后），则动画序列为2，3，4，5，5；如果fillMode是kCAFillModeBackwards（与kCAFillModeForwards相反），动画序列为1，2，3，4，4（最后一秒为4是由于动画不消除）；如果fillMode是kCAFillModeBoth，则动画序列为1，2，3，4，5；默认的kCAFillModeRemoved则动画序列为空，2，3，4，空。解释应该比较清楚了吧。</p>
+
+<p>回到最初的CABasicAnimation基础动画：</p>
+
+<p>```
+ CABasicAnimation *pulseAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+  pulseAnimation.duration = .5;
+  pulseAnimation.toValue = [NSNumber numberWithFloat:1.1];
+  pulseAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+  pulseAnimation.autoreverses = YES;
+  pulseAnimation.repeatCount = FLT_MAX;</p>
+
+<p>```</p>
+
+<p>第一句<code>+ (instancetype)animationWithKeyPath:(NSString *)path;</code> 表示需要修改的Layer属性，例如“position”，”tansform.scale”，可以对哪些属性进行修改，可以参考<a href="">官方文档</a>,后面几句设置的duration、autoreverses、repeatCount都已经解释过，toValue是设置动画属性的目标值，timingFunction是至动画的时间函数，就是个简单的贝塞尔曲线（Bezier Curve）,如下图所示：</p>
+
+<p><img src="https://developer.apple.com/library/ios/documentation/cocoa/conceptual/animation_types_timing/Art/standardtiming_2x.png"></p>
+
+<p>分别代表kCAMediaTimingFunctionLinear,
+kCAMediaTimingFunctionEaseIn,
+kCAMediaTimingFunctionEaseOut,
+kCAMediaTimingFunctionEaseInEaseOut四类时间函数，简单点理解就是动画是匀速的(kCAMediaTimingFunctionLinear)还是先快后慢（kCAMediaTimingFunctionEaseOut），还是先慢后快（kCAMediaTimingFunctionEaseIn），还是慢快慢（kCAMediaTimingFunctionEaseInEaseOut）。kCAMediaTimingFunctionDefault对应的时间函数就是四个点决定的三次贝塞尔曲线：</p>
+
+<p><img src="http://ww2.sinaimg.cn/large/65cc0af7gw1dxm21gxjr0j.jpg"></p>
+
+<p>自定义时间函数当然也是可以的，参考<a href="http://stackoverflow.com/questions/5161465/how-to-create-custom-easing-function-with-core-animation">How to create custom easing function with Core Animation</a></p>
+
+<p>如果时间函数无法用简单的贝塞尔曲线表达，那么就得用到另一种动画了CAKeyframeAnimation关键帧动画，Part 2再继续聊。关于时间函数可以参考卢克的Blog <a href="http://geeklu.com/2012/09/animation-in-ios/">漫谈iOS Animation</a>或者官方文档<a href="https://developer.apple.com/library/ios/documentation/cocoa/conceptual/animation_types_timing/articles/PropertyAnimations.html">Animation Types and Timing Programming Guide</a></p>
+
+<p>Example Source：<a href="https://github.com/neror/CA360">CA360</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS中GCD的那些坑]]></title>
+    <link href="http://hrchen.com/2013/07/tricky-gcd-on-ios/"/>
+    <updated>2013-07-20T17:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/tricky-gcd-on-ios</id>
+    <content type="html"><![CDATA[<p>之前一个系列中<a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a>介绍了GCD的各类接口，别仅仅使用了最基本的dispatch_async和dispatch_sync接口提交个Block完事，那就白瞎GCD的强大功能了。要用高级接口，照旧会有坑在那里，绝大多数坑并不是设计缺陷，而是自身特性造成的误用，本文会记录下这些坑。</p>
+
+<h3>坑一</h3>
+
+<p>GCD需要自己生成AutoreleasePool吗？正常我们用NSThread的接口生成一个子线程时，都会在入口方法里生成NSAutoreleasePool或者用@@autoreleasepool{}来回收autoreleased的对象，那么在GCD的Block中呢？</p>
+
+<p>GCD会自动管理每个Queue的autorelease pool，但是我们无法保证什么时候它回去drain(文档中没有说明)，有可能在一个Block执行结束后，也可能很多个Block执行结束后。因此如果仅仅生成少量对象，那就没有必要去自己生成NSAutoreleasePool；否则就自己生成一个NSAutoreleasePool来控制drain pool。</p>
+
+<!--more-->
+
+
+<h3>坑二</h3>
+
+<p>dispatch_once提供是和pthread库中类似pthread_once的功能，dispatch_once接口是指在整个App运行期间运行且仅运行一次提交的Block，但是由于dispatch_once会导致调试非常困难，因为最好少用dispatch_once，就像尽量少用NSObject的类方法+initialize()和+(void)load。</p>
+
+<p>目前用到dispatch_once比较多的地方是在实现singleton单例模式的时候，要注意第一个参数dispatch_once_t必须是个全局或者static变量。</p>
+
+<h3>坑三</h3>
+
+<p>dispatch_after(when, queue, block)接口用于在一个时间间隔后执行提交的Block，其中第一个参数类型是dispatch_time_t，可以支持纳秒级的延迟执行，例如：</p>
+
+<p><code>
+double delayInSeconds = 0.01;
+dispatch_time_t delayTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t) (delayInSeconds * NSEC_PER_SEC));
+</code></p>
+
+<p>然而如果在App中用dispatch_after来控制UI的显示顺序时确实非常危险的，可能并不见的严格按照你期望的延迟量去显示UI，所以最好还是少碰dispatch_after，而是通过合适的回调来控制UI先后顺序，例如利用-viewWillAppear和-viewDidAppear来处理UI的先后顺序。</p>
+
+<h3>坑四</h3>
+
+<p>在使用Dispatch Barrier(dispatch_barrier_async或者dispatch_barrier_sync)时，必须注意它只对dispatch_queue_create(label, attr)接口创建的并发队列有作用，如果是Global Queue(dispatch_get_global_queue)，这个barrier就不起作用，想想也正常，是全局的队列，凭什么你一个barrier就同步其他任务的执行呢？所以必须得是私有并发队列才有barrier的作用。如果是私有串行队列呢？那不是和主队列一样，已经是串行的了，还要barrier做啥？</p>
+
+<h3>坑五</h3>
+
+<p>如果使用dispatch_get_global_queue来生成全局队列时，可以设置4种优先级设置，但是如果没有明确的必要，不要在程序中使用不同的优先级来控制Block的执行，尤其是在特殊情况可能会导致这篇<a href="http://www.objc.io/issue-2/concurrency-apis-and-pitfalls.html">Blog</a>提到的Priority Inversion问题，具体为什么直接查看这篇Blog的说明，记住一点尽量只用DISPATCH_QUEUE_PRIORITY_DEFAULT默认的优先级创建全局队列。</p>
+
+<h3>坑六</h3>
+
+<p>多线程开发最危险的两件事就是死锁和公共资源访问问题。使用GCD的场景如果很复杂，就有非常大的可能遇到死锁问题，尤其是在使用dispatch_sync的时候：</p>
+
+<p>```
+dispatch_sync(queue, ^(){</p>
+
+<pre><code>dispatch_sync(queue, ^(){
+    foo();
+});
+</code></pre>
+
+<p>});
+```
+上面代码就会导致死锁，当然我们很少会这么写代码，但是如果这样用用dispatch_sync：</p>
+
+<p>```
+void test1()
+{</p>
+
+<pre><code>dispatch_sync(queueA, ^(){
+    test2();
+});
+</code></pre>
+
+<p>}</p>
+
+<p>void test2()
+{</p>
+
+<pre><code>dispatch_sync(queueB, ^(){
+    test3();
+});
+</code></pre>
+
+<p>}</p>
+
+<p>void test3()
+{</p>
+
+<pre><code>dispatch_sync(queueA, ^(){
+    //do something
+});
+</code></pre>
+
+<p>}
+```</p>
+
+<p>如果上面的代码调用test1()，就会导致死锁，这种在某些巧妙的调用关系发生才会导致的死锁可能很难发现，所以如果没有必要，尽量不要使用dispatch_sync。</p>
+
+<p>如果使用dispatch_async，就不会导致死锁，即使像这样调用：</p>
+
+<p>```
+dispatch_async(queue, ^(){</p>
+
+<pre><code>dispatch_async(queue, ^(){
+    foo();
+});
+</code></pre>
+
+<p>});
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS中Run Loop的那些坑]]></title>
+    <link href="http://hrchen.com/2013/07/tricky-runloop-on-ios/"/>
+    <updated>2013-07-14T21:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/tricky-runloop-on-ios</id>
+    <content type="html"><![CDATA[<p>前段时间写了个关于iOS多线程编程的系列：</p>
+
+<ul>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a></li>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-2/">iOS多线程编程Part 2/3 - NSOperation</a></li>
+<li><a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a></li>
+</ul>
+
+
+<p><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a>中讨论了Run Loop的机制、接口和需要注意的坑，不过由于内容较多，描述Run Loop的坑写得很零散，本文做一个集中归纳。</p>
+
+<p><img src="/images/post/runloop_source.jpg"></p>
+
+<p>回顾一下，Run Loop就是个监听事件的循环，会不停的检查它的事件源(Timer和Input Source)有没有事件发生，如果有事件发生就处理事件或者调用事件的处理方法。</p>
+
+<h3>坑一</h3>
+
+<p>在线程中添加Timer时，肯定需要先生成Timer对象啦，有类方法也有实例方法，如果是使用scheduledTimerWith***接口生成的Timer对象，会自动添加到当前线程的NSDefaultRunLoopMode中；如果是其他接口生成的Timer对象，则需要用<code>-addTimer:forMode</code>添加Timer，这样做的好处是可以指定添加Timer的Run Loop以及模式。</p>
+
+<!-- more -->
+
+
+<h3>坑二</h3>
+
+<p>如果Run Loop中添加的是Timer而没有其他Input Source，而这个Timer只运行一次，那么Timer事件触发后Timer事件源就会从Run Loop删除，那么再运行Run Loop就会立刻返回；同时Timer事件触发是不会让Run Loop返回的，即使使用CF层的CFRunLoopRef运行接口<code>SInt32 CFRunLoopRunInMode (mode, seconds, returnAfterSourceHandled);</code>运行Run Loop，其第三个参数为YES，Timer事件触发仍然不会导致当前Run Loop的运行返回。</p>
+
+<h3>坑三</h3>
+
+<p>如果是使用NSRunLoop，有三个运行的接口：</p>
+
+<p>```
+//运行 NSRunLoop，运行模式为默认的NSDefaultRunLoopMode模式，没有超时限制
+- (void)run;</p>
+
+<p>//运行 NSRunLoop: 参数为运行模式、时间期限，返回值为YES表示是处理事件后返回的，NO表示是超时或者停止运行导致返回的- (BOOL)runMode:(NSString <em>)mode beforeDate:(NSDate </em>)limitDate;
+//运行 NSRunLoop: 参数为运时间期限，运行模式为默认的NSDefaultRunLoopMode模式
+- (void)runUntilDate:(NSDate *)limitDate;
+```</p>
+
+<p>建议是使用第二个接口来运行，因为它能够设置Run Loop的运行参数最多，而且最重要的是可以使用CFRunLoopStop(runLoopRef)来停止Run Loop的运行，而第一个和第三个接口无法使用CFRunLoopStop(runLoopRef)来停止Run Loop的运行。</p>
+
+<h3>坑四</h3>
+
+<p>在使用NSURLConnection或者NSStream时，需要考虑到Run Loop的问题，默认情况下这两个对象生成后都是运行在当前线程的NSDefaultRunLoopMode模式的，如果是在主线程，那么在滚动ScrollView或者TableView时，主线程的Run Loop会运行在UITrackingRunLoopMode模式，那么NSURLConnection或者NSStream的回调就无法运行。因此最好是指定NSURLConnection或NSStream在Run Loop中的运行模式，两者有相同的接口<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>来设置NSURLConnection和NSStream的Run Loop以及模式，而且设置的Mode要设置为NSRunLoopCommonModes，因为NSRunLoopCommonModes默认会包含NSDefaultRunLoopMode和UITrackingRunLoopMode，这样无论Run Loop运行在哪个模式，都可以保证NSURLConnection或者NSStream的回调可以被调用。另外如果是在子线程中你设置了自定义的Run Loop模式，还可以用接口<code>CFRunLoopAddCommonMode(runLoopRef, mode)</code>添加到NSRunLoopCommonModes。</p>
+
+<p>不过NSURLConnection的使用有点特殊，必须使用它的designated initializer <code>- (id)initWithRequest:(NSURLRequest *)request delegate:(id)delegate startImmediately:(BOOL)startImmediately</code>生成NSURLConnection对象，而且第三个参数是否立刻启动NSURLConnection要设置为NO，之后再用<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>设置Run Loop与模式，再调用<code>[NSURLConnectionObject start]</code>启动。如果是其他接口生成NSURLConnection，用<code>- (void)scheduleInRunLoop:(NSRunLoop *)aRunLoop forMode:(NSString *)mode;</code>设置Run Loop和mode都不会起作用。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ARC工程转换和开发注意事项]]></title>
+    <link href="http://hrchen.com/2013/07/arc-transfer-and-notice/"/>
+    <updated>2013-07-09T17:40:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/arc-transfer-and-notice</id>
+    <content type="html"><![CDATA[<p>本文用于备份ARC工程转换流程和开发注意事项，ARC的意义不仅仅是开发效率的提高，更是一种思维方式的转变，不再考虑什么地方调用retain/release，而是利用对象的强/弱指针来控制对象所有权。</p>
+
+<h3>ARC工程转换</h3>
+
+<h4>Xcode工程设置</h4>
+
+<p>1)  查看Xcode工程Build Settings设置中Builing Options中的Compiler选项，确保使用的是Apple LLVM compiler 3.0以上版本的编译器；</p>
+
+<p><img src="/images/post/xcode-compiler.jpg"></p>
+
+<p>2)  在Xcode工程的Build Settings开启ARC：搜索Objective-C Automatic Reference Counting；</p>
+
+<p><img src="/images/post/xcode-arc.jpg"></p>
+
+<!-- more -->
+
+
+<p>3)  打开Xcode的Prefernece设置中的General，开启Coninue building after errors。</p>
+
+<p><img src="/images/post/xcode-settings.jpg"></p>
+
+<h4>开启ARC转换工具</h4>
+
+<p>1) 打开Xcode->Edit->Refactor->Convert to Objective-C ARC…</p>
+
+<p><img src="/images/post/xcode-refactor-arc.jpg"></p>
+
+<p>2) 注意只选择本工程相关文件，第三方库如果一般不要进行ARC转换，如果有对应ARC版本库可以直接替换。</p>
+
+<p><img src="/images/post/xcode-arc-check.jpg"></p>
+
+<p>正常情况下不会顺利完成Check，会有大量需要手动修改的Error，常见的问题有以下这些：</p>
+
+<p>1)  调用 [cell autorelease]、[object release]、[object retain]，直接删除即可，这种应该属于Checker的误报，正常是可以直接Refactor的。</p>
+
+<p>2)  CoreFoundation对象与NSObject对象的转换，需要添加<strong>bridge, </strong>bridge_retained或者__bridge_trasfer。</p>
+
+<p>CoreFoundation的对象例如CFStringRef有自己的引用计数，和Cocoa框架中的NSObject是不同的方法，ARC只对NSObject对象的引用计数有效。只要是生成CF对象的函数名中有含有Create, Copy, 或者Retain，就表示需要为它的引用计数负责，需要使用结束时CFRelease()将引用计数减一。</p>
+
+<p>例如：如果使用了一个含有reate, Copy, 或者Retain的方法生成了一个CFStringRef name，那么在转换成NSString时，就需要写成<code>NSString *nameString = (__bridge_transfer NSString *)name;</code></p>
+
+<ul>
+<li>__bridge_transfer的含义表示将CF对象的管理权移至NSObject层由ARC负责，无需再用CFRelease()释放name这个CFStringRef。</li>
+<li>__bridge_retained的含义相反，就是将一个NSObject对象转换成CF对象，并且引用计数加一，那么在CF层用完这个CF对象后，就需要使用CFRelease()释放该对象，因为内存管理权已经由NSobject层转移至CF层。</li>
+<li>__bridge的含义表示在NSObject层和CF层引用计数都平衡，无需转移内存管理权。
+例如如果使用不包含reate, Copy, 或者Retain的函数获得的CFStringRef name转换成NSString时，无需处理引用计数问题，因此可以这样转换：<code>NSString *nameString = (__bridge NSString *)name;</code></li>
+</ul>
+
+
+<p>除了上面三个关键字，还有两个宏CFBridgingRetain()和CFBridgingRelease()来控制CF层与NSObject层的引用计数平衡，不过实际上他们就是<strong>bridge_retained和</strong>bridge_transfer。</p>
+
+<p>```
+CFTypeRef CFBridgingRetain(id X)
+{ return (__bridge_retained CFTypeRef)X; }</p>
+
+<p>id CFBridgingRelease(CFTypeRef CF_CONSUMED X)
+{ return (__bridge_transfer id)X; }
+```</p>
+
+<p>3)  NSInvocation方法
+例如：</p>
+
+<p><code>
+NSString *date = @”test”;
+[writeInvocation setArgument:&amp;data atIndex:2];
+</code></p>
+
+<p>NSInvocation在设置调用参数时会提示：<code>NSInvocation's setArgument is not safe to be used with an object with ownership other than __unsafe_unretained</code>
+修改方法需要将传入的参数添加__unsafe_unretained关键字，即<code>NSString * __unsafe_unretained date = @”test”;</code></p>
+
+<p>4)  NSAutoreleasePool
+ARC下不再支持NSAutoreleasePool，需要使用@autoreleasepool{}替换。</p>
+
+<p>5)  错误<code>Passing address of non-local object to __autoreleasing parameter for write-back</code>。
+此错误通常是由于将非局部变量的地址传递给一个方法导致的，例如：
+下面接口的声明为<code>-(void)initArgument:(NSArray **)array</code>。</p>
+
+<p><code>
+//_array是一个NSArray的成员变量，在这个方法中初始化，由于这个参数是__autoreleasing的，所以会报上面的错误
+[testObject initArgument:_array];
+</code></p>
+
+<p>处理方法也比较简单，将方法的参数声明为__strong即可：<code>-(void)initArgument:(NSArray * __strong *)array</code>。</p>
+
+<h3>ARC开发注意事项</h3>
+
+<p>1)  NSObject的 retain, release和autorelease都无需再调用，ARC会评估NSObject对象的生命周期，在编译器自动添加相应内存相关方法完成内存管理，并且会生成相应的dealloc方法，因此如果自定义的类如果没有需要内存管理外的操作(例如删除NSNotification的Observer以及将指向自己的delegate置为nil)，就无需再实现dealloc。</p>
+
+<p>2)  不能在struct中使用NSObject对象的指针。</p>
+
+<p>3)  使用@autoreleasepool{}取代NSAutoreleasePool。</p>
+
+<p>4)  不再使用NSZone。</p>
+
+<p>5)  新增属性关键字strong、weak、unsafe_unretained</p>
+
+<p>6)  新增变量关键字<strong>strong、</strong>weak、<strong>unsafe_unretained、</strong>autoreleasing：
+<strong>strong表示这个变量指针是强指针，指向的对象只要有强指针指向它就不会被销毁；
+</strong>weak表示变量指针是弱指针，如果没有其他强指针指向这个对象时，这个对象就会被销毁，同时弱指针会置为nil；
+<strong>unsafe_unretained和</strong>weak类似，除了在对象销毁后不会使这个<strong>unsafe_unretained指针置为nil，因此这个指针就变成悬空指针！
+</strong>autoreleasing用于传递给方法的参数是引用传值，并且在返回时会autorelease。
+正确的关键字写法：</p>
+
+<p><code>
+MyClass * __weak weakReference;
+MyClass * __unsafe_unretained unsafeReference;
+</code></p>
+
+<p>7)  避免循环引用问题
+循环引用问题一般在两个类对象相互引用和使用Block对象时出现，解决两个类对象相互引用问题，可以将其中一个引用声明为弱引用，就可以打破循环引用问题。
+Block对象常见的循环引用问题如下：</p>
+
+<p>```
+MyViewController *myController = [[MyViewController alloc] init…];</p>
+
+<p>myController.completionBlock= ^() {</p>
+
+<pre><code>[myController dismissViewControllerAnimated:YES completion:nil]; }; 
+</code></pre>
+
+<p>```
+上面例子中会导致completionBlock和myController循环引用，正确的处理方法有两种：</p>
+
+<ul>
+<li>一是使用<strong>block关键字，之后将该</strong>block变量置为nil</li>
+</ul>
+
+
+<p>```
+MyViewController * __block myController = [[MyViewController alloc] init…];</p>
+
+<p>myController.completionBlock= ^() {</p>
+
+<pre><code>[myController dismissViewControllerAnimated:YES completion:nil]; 
+myController = nil;
+</code></pre>
+
+<p>};
+```</p>
+
+<ul>
+<li>二是使用__weak关键字</li>
+</ul>
+
+
+<p>```
+MyViewController * <strong>block myController = [[MyViewController alloc] init…];
+MyViewController * </strong>weak weakMyViewController = myController;</p>
+
+<p>myController.completionBlock= ^() {</p>
+
+<pre><code>[weakMyViewController dismissViewControllerAnimated:YES completion:nil]; 
+</code></pre>
+
+<p>};
+```</p>
+
+<p>8)  toll-free bridge问题</p>
+
+<p>对于要使用Core Foundation的对象时，要注意对象生命周期的所有权问题，重点是三个关键字<strong>bridge, </strong>bridge_retained和__bridge_trasfer对CF对象和NS对象的转换，使用方法参见上节工程转换时候的说明。</p>
+
+<p>9)  ARC时所有临时变量指针(栈内生成)都会初始化为nil。例如：</p>
+
+<p>```
+- (void)test {</p>
+
+<pre><code>NSString *name; 
+NSLog(@"name: %@", name); 
+</code></pre>
+
+<p>}
+```
+上面代码会打印nil。</p>
+
+<p>10) 如果有不需要ARC管理的文件(例如还未支持ARC的第三方库)，可以在Xcode中设置工程Target的Build Phase中Compiler Source，不需要ARC管理的文件添加编译参数“-fno-objc-arc”。
+<img src="/images/post/xcode-fno-objc-arc.jpg"></p>
+
+<p>11) 在MRC情况下NSString * <strong>block myString是不会被retain的，但是ARC情况下NSString * </strong>block myString实际会被retian，如果需要和MRC下同样的语义，请使用：<strong>block NSString * </strong>unsafe_unretained myString 或者<strong>block NSString * </strong>weak myString。</p>
+
+<p>12) iOS 4.*系统不支持weak语义，可以使用unsafe_unretained替代，但是可能导致悬空指针问题，需要小心对待。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[几个有用的Objective-C新特性]]></title>
+    <link href="http://hrchen.com/2013/07/modern-objective-c-until-2013/"/>
+    <updated>2013-07-04T21:20:00+08:00</updated>
+    <id>http://hrchen.com/2013/07/modern-objective-c-until-2013</id>
+    <content type="html"><![CDATA[<p>Objective-C已经稳定在TIOBE编程语言排行榜前五名，2010年刚接触Objective-C还是因为公司在搞Mac版企业IM开发，那时候OC还几乎无人问津，这些年倒是风光无限，只能感叹当初踩对点了，不清楚未来10年又会有哪些语言流行起来，下一个会不会是<a href="http://golang.org/">go</a>？。这几年来Objective-C的进化速度也是非常快，Apple不断添加新的特性到Objective-C，例如ARC、Block等，以下挑些个人感觉对开发效率影响比较大的新特性来说：</p>
+
+<h3>不用再写sythesize</h3>
+
+<p>以前声明属性Property，都要在类的实现@implementation里将属性和成员变量做相应的synthesize，synthesize的含义是将属性和成员变量做关联。早期声明一个属性，需要同样声明一个成员变量，然后<code>@synthersize date=_date;</code>将属性与成员变量关联起来，后来可以无需声明成员变量，<code>@synthersize date=_date;</code>可以自动帮你声明一个名字为_date的成员变量，<code>@synthersize date</code>就是自动声明一个成员变量date。</p>
+
+<p>Xcode4.4以后，synthesize关键字也不需要写了，例如<code>@property (nonatomic, readwrite, retain) NSDate *date;</code>编译器可以自动绑定并且生成对应的成员变量<code>NSDate *_date</code>，相当于是自动添加了<code>@synthesize date=_date;</code>。这样既不用再声明成员变量，也不要费神写@synthesize，方便不少。</p>
+
+<!--more-->
+
+
+<p>当然凡事有例外，如果同时实现了setter和getter方法，例如上面你实现了<code>-(void)setDate</code>和<code>-(NSDate *)date</code>，那么编译器就不会自动帮你synthesize。这里同时实现setter和getter方法是针对readwrite属性来说的，对于readonly属性，那么你实现了getter方法即<code>-(NSDate *)date</code>也同样不会自动绑定成员变量。</p>
+
+<h3>成员方法的顺序</h3>
+
+<p>以前在.m实现文件中实现方法时经常会引用其他成员方法，而如果引用的成员方法未在头文件或者匿名catrgory中声明，同时也不在引用者前面，那么编译器会报未找到该方法的错误。现在新的编译器中，只要在实现文件里的成员方法，在其他任何位置的方法中调用都不再报错，Nice!</p>
+
+<h3>不一样的NSNumber、NSArray和NSDictionary</h3>
+
+<p>最新的OC语法里还添加了许多类似脚本语言的特性，例如以前要生成NSNumber满费劲，都是[NSNumber numberWith***]的写法，太多冗余。现在方便了，可以用@符号替代，例如<code>[NSNumber numberWithChar:‘c’]</code>可以直接表示为<code>@'c'</code>，<code>[NSNumber numberWithInt:123]</code>直接表示为<code>@123</code>，<code>[NSNumber numberWithFloat:1.23f]</code>z直接写为<code>@1.23f</code>，其他类型同理变换。</p>
+
+<p>NSArray的变化也是类似的，<code>[NSArray array]</code>就是<code>@[]</code>，<code>[NSArray arrayWithObject:x]</code>就是 <code>@[x]</code>，<code>[NSArray arrayWithObjects:x, y, z, nil]</code>就是<code>@[x, y, z]</code>，不过这种方式生成的是NSArray，要生成NSMutableArray呢？也简单，直接调用mutableCopy即可，例如<code>[@[x, y, z] mutableCopy]</code>。如果要访问第1个元素，以前需要写成<code>[array objectAtIndex:0]</code>，现在可以直接用<code>array[0]</code>访问，像极了脚本语言。</p>
+
+<p>NSDictionary的变化和NSArray类似，不同的是用<code>@{}</code>,例如<code>[NSDictionary dictionaryWithObject:value forKey:key]</code>可以表示为<code>@{key: value}</code>。访问时也和大多数脚本语言一样，用<code>dict[key]</code>来获得键值对应的值。</p>
+
+<p>至于以上简化的方法到底要不要用，还是看自己或者项目组的习惯了，个人建议是在符合统一编码规范的情况下，尽量拥抱变化，毕竟这些都是为了优化生产效率的变化。</p>
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,604 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>All about mobile things.</title>
+	<meta name="author" content="hrchen">
+
+	
+	<meta name="description" content="Apr 20th, 2015 Android Android App动态更新综述 国内App尤其是电商类App功能设计上都非常复杂。 Apr 12th, 2015 iOS,Android,Performance 携程App的网络性能优化实践 2014年中接手携程无线App的框架和基础研发工作之后 &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="All about mobile things." type="application/atom+xml">
+	
+	<link rel="canonical" href="http://hrchen.com/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		$(function(){
+			$('.profilepic').append("<img src='http://www.gravatar.com/avatar/" + MD5("dr.hrchen@gmail.com") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+		});
+	</script>
+</div>
+<hgroup>
+  <h1><a href="/">All about mobile things.</a></h1>
+</hgroup>
+
+<p class="subtitle">hrchen's blogging (dr.hrchen@gmail.com)</p>
+<p class="subtitle">CS Ph.D，专注移动产品开发，现任携程无线开发总监</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		<a class="weibo" href="http://www.weibo.com/hrchen" title="Sina Weibo">Weibo</a>
+		
+		
+		
+		
+		<a class="twitter" href="http://twitter.com/hrchen" title="Twitter">Twitter</a>
+		
+		
+		<a class="github" href="https://github.com/hrchen" title="GitHub">GitHub</a>
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner">
+<div itemscope itemtype="http://schema.org/Blog">
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-20T15:01:00+08:00" data-updated="true" itemprop="datePublished">Apr 20<span>th</span>, 2015</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/android/'>Android</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2015/04/how-to-implement-android-dynamic-update/" itemprop="url">Android App动态更新综述</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>国内App尤其是电商类App功能设计上都非常复杂。</p>
+
+		
+		
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-12T09:01:00+08:00" data-updated="true" itemprop="datePublished">Apr 12<span>th</span>, 2015</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios-android-performance/'>iOS,Android,Performance</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2015/04/how-ctrip-improves-app-networking-performance/" itemprop="url">携程App的网络性能优化实践</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>2014年中接手携程无线App的框架和基础研发工作之后，首要的工作就是客户端性能优化，尤其是其网络服务性能，是所有App优化工作的重中之重。首先介绍下携程App的网络服务架构。下图是携程App的架构设计（典型的层次化设计）：</p>
+
+<p><img src="/images/post/ctrip_app_architecure.png"></p>
+
+<p>由于携程业务很多，开发资源上无法全部使用Native来实现业务逻辑，因此有相当一部分频道是基于Hybrid来实现。网络通讯属于基础设施层的一部分，提供给整个App统一的网络服务。</p>
+
+
+		
+		<a href="/2015/04/how-ctrip-improves-app-networking-performance/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-03-30T21:01:00+08:00" data-updated="true" itemprop="datePublished">Mar 30<span>th</span>, 2015</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/xian-che/'>闲扯</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2015/03/anti-startup/" itemprop="url">Anti-startup: 反创业</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>最近很多朋友以及公司的同事离职后都去了创业公司，也有不少创业公司拉我入伙。现在创业风潮正盛，似乎大家很快都会名利双收，真的是这样吗？这里不针对已经在成熟公司做到中高层人士参加创业发表意见，而是针对刚工作不久的同学提点个人的想法。</p>
+
+<p>年纪的问题：创业的理由中经常听到的就是『年纪不小，再不创业就晚了；想乘着年轻赌一把，最多不过损失一到两年的工资』。一定要年轻才能创业吗？国内IT大佬真正成功时都不算年轻，在行业内摸爬滚打了多年才取得相应的成就。像我之前工作过的思科Webex，创始人朱敏文革时下放农村近十年，38岁才去美国留学，创办Webex时已经48岁，并不妨碍他成功创办十亿美元级公司（Webex上市数年后以四十亿刀卖给思科）。创业成功与否和你的能力运气相关，和年纪轻的关系真不大。这里不是USA，可以出现Facebook扎克伯格式的成功，在中国年轻就意味你的能力、工作经验和社会经历都不足，江湖险恶，你背后挨刀的可能多的是，你真的准备好了吗？你的职业生涯几十年呢，着个哪门子急呢？出名要乘早？那得先看看你有多少能力。</p>
+
+
+		
+		<a href="/2015/03/anti-startup/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-13T09:01:00+08:00" data-updated="true" itemprop="datePublished">Mar 13<span>th</span>, 2014</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/xian-che/'>闲扯</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2014/03/how-to-learn-computer-science/" itemprop="url">如何攀升计算机技能树</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>国内大部分情况下技术搞到一定程度就要转成管理，否则薪酬上不去，其实对于热爱技术的人而言是不公平的，每天花很多时间做PPT和项目管理真心无趣啊。不过近年来很多高级IT工程师岗位薪酬达到40W+已经却来越多了，不过要突破50W乃至60W+，大都还是意味着你要做管理性质的工作。情况在好转，只要你有核心技术实力，又在很好的技术发展方向上，工程师突破50W+难度没那么大。附张国内主流互联网公司薪酬范围表：</p>
+
+
+		
+		<a href="/2014/03/how-to-learn-computer-science/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-12T18:13:00+08:00" data-updated="true" itemprop="datePublished">Mar 12<span>th</span>, 2014</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2014/03/talking-about-core-animation-part-1/" itemprop="url">Core Animation编程 Part1/2</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>那啥，一忙起来就彻底忘记更新Blog了，目前移动产品开发也有了新的趋势，继续守在一个平台越来越难混了，HTML5在国内App开发中也逐步流行，因此未来移动开发工程师不仅仅要懂iOS/Android，多少还需要了解些H5，也就是Hybrid的开发模式，具体改日再叙。</p>
+
+<p>今天继续扯iOS开发系列，聊聊iOS中牛逼闪闪的Core Animation，会有两个部分。先来了解下iOS中动画的层次：</p>
+
+<p><img src="/images/post/core-animation-architecture.jpg"></p>
+
+<p>最上层是UIKit，第二层是Core Anmation，然后iOS把这些动画效果用Open GL将在硬件上渲染出来。UIKit层中的动画API是作用于UIView，Core Animation层的动画API是作用于CALayer。我个人学习iOS的一个方法就是看类的头文件和相应的官方Reference文档。头文件可以很快查找出类的继承结构、属性和接口情况；Reference文档会详细介绍类的属性、方法以及需要了解的核心信息，没什么比这个文档说得更清楚了。</p>
+
+<p><a href="http://developer.apple.com/library/ios/#documentation/UIKit/Reference/UIView_Class/UIView/UIView.html">UIView Class Reference</a>中讲到UIView主要负责三件事：</p>
+
+<p>(1) 绘图和动画：利用UIKit、Core Graphics或者OpenGL ES绘制视图内容；有些UIView视图属性支持动画。</p>
+
+<p>(2) 布局和子视图管理；一个视图可以关联零个或者多个子视图，如果有子视图，还可以定义子视的大小和位置；每个视图会定义它相对于父视图的尺寸变化(resizing)规则</p>
+
+<p>(3) 事件处理：UIView继承自UIResponder，因此可以处理Touch事件和其他UIResponder中定义的事件；可以添加UIGestureRecognizer到UIView上，从而处理常见的几种手势操作。</p>
+
+
+		
+		<a href="/2014/03/talking-about-core-animation-part-1/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-20T17:20:00+08:00" data-updated="true" itemprop="datePublished">Jul 20<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/tricky-gcd-on-ios/" itemprop="url">iOS中GCD的那些坑</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>之前一个系列中<a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a>介绍了GCD的各类接口，别仅仅使用了最基本的dispatch_async和dispatch_sync接口提交个Block完事，那就白瞎GCD的强大功能了。要用高级接口，照旧会有坑在那里，绝大多数坑并不是设计缺陷，而是自身特性造成的误用，本文会记录下这些坑。</p>
+
+<h3>坑一</h3>
+
+<p>GCD需要自己生成AutoreleasePool吗？正常我们用NSThread的接口生成一个子线程时，都会在入口方法里生成NSAutoreleasePool或者用@@autoreleasepool{}来回收autoreleased的对象，那么在GCD的Block中呢？</p>
+
+<p>GCD会自动管理每个Queue的autorelease pool，但是我们无法保证什么时候它回去drain(文档中没有说明)，有可能在一个Block执行结束后，也可能很多个Block执行结束后。因此如果仅仅生成少量对象，那就没有必要去自己生成NSAutoreleasePool；否则就自己生成一个NSAutoreleasePool来控制drain pool。</p>
+
+
+		
+		<a href="/2013/07/tricky-gcd-on-ios/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-14T21:20:00+08:00" data-updated="true" itemprop="datePublished">Jul 14<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/tricky-runloop-on-ios/" itemprop="url">iOS中Run Loop的那些坑</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>前段时间写了个关于iOS多线程编程的系列：</p>
+
+<ul>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a></li>
+<li><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-2/">iOS多线程编程Part 2/3 - NSOperation</a></li>
+<li><a href="http://www.hrchen.com/2013/07/multi-threading-programming-of-ios-part-3/">iOS多线程编程Part 3/3 - GCD</a></li>
+</ul>
+
+
+<p><a href="http://www.hrchen.com/2013/06/multi-threading-programming-of-ios-part-1/">iOS多线程编程Part 1/3 - NSThread &amp; Run Loop</a>中讨论了Run Loop的机制、接口和需要注意的坑，不过由于内容较多，描述Run Loop的坑写得很零散，本文做一个集中归纳。</p>
+
+<p><img src="/images/post/runloop_source.jpg"></p>
+
+<p>回顾一下，Run Loop就是个监听事件的循环，会不停的检查它的事件源(Timer和Input Source)有没有事件发生，如果有事件发生就处理事件或者调用事件的处理方法。</p>
+
+<h3>坑一</h3>
+
+<p>在线程中添加Timer时，肯定需要先生成Timer对象啦，有类方法也有实例方法，如果是使用scheduledTimerWith***接口生成的Timer对象，会自动添加到当前线程的NSDefaultRunLoopMode中；如果是其他接口生成的Timer对象，则需要用<code>-addTimer:forMode</code>添加Timer，这样做的好处是可以指定添加Timer的Run Loop以及模式。</p>
+
+
+		
+		<a href="/2013/07/tricky-runloop-on-ios/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-09T17:40:00+08:00" data-updated="true" itemprop="datePublished">Jul 9<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/arc-transfer-and-notice/" itemprop="url">ARC工程转换和开发注意事项</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>本文用于备份ARC工程转换流程和开发注意事项，ARC的意义不仅仅是开发效率的提高，更是一种思维方式的转变，不再考虑什么地方调用retain/release，而是利用对象的强/弱指针来控制对象所有权。</p>
+
+<h3>ARC工程转换</h3>
+
+<h4>Xcode工程设置</h4>
+
+<p>1)  查看Xcode工程Build Settings设置中Builing Options中的Compiler选项，确保使用的是Apple LLVM compiler 3.0以上版本的编译器；</p>
+
+<p><img src="/images/post/xcode-compiler.jpg"></p>
+
+<p>2)  在Xcode工程的Build Settings开启ARC：搜索Objective-C Automatic Reference Counting；</p>
+
+<p><img src="/images/post/xcode-arc.jpg"></p>
+
+
+		
+		<a href="/2013/07/arc-transfer-and-notice/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-04T21:20:00+08:00" data-updated="true" itemprop="datePublished">Jul 4<span>th</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/modern-objective-c-until-2013/" itemprop="url">几个有用的Objective-C新特性</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>Objective-C已经稳定在TIOBE编程语言排行榜前五名，2010年刚接触Objective-C还是因为公司在搞Mac版企业IM开发，那时候OC还几乎无人问津，这些年倒是风光无限，只能感叹当初踩对点了，不清楚未来10年又会有哪些语言流行起来，下一个会不会是<a href="http://golang.org/">go</a>？。这几年来Objective-C的进化速度也是非常快，Apple不断添加新的特性到Objective-C，例如ARC、Block等，以下挑些个人感觉对开发效率影响比较大的新特性来说：</p>
+
+<h3>不用再写sythesize</h3>
+
+<p>以前声明属性Property，都要在类的实现@implementation里将属性和成员变量做相应的synthesize，synthesize的含义是将属性和成员变量做关联。早期声明一个属性，需要同样声明一个成员变量，然后<code>@synthersize date=_date;</code>将属性与成员变量关联起来，后来可以无需声明成员变量，<code>@synthersize date=_date;</code>可以自动帮你声明一个名字为_date的成员变量，<code>@synthersize date</code>就是自动声明一个成员变量date。</p>
+
+<p>Xcode4.4以后，synthesize关键字也不需要写了，例如<code>@property (nonatomic, readwrite, retain) NSDate *date;</code>编译器可以自动绑定并且生成对应的成员变量<code>NSDate *_date</code>，相当于是自动添加了<code>@synthesize date=_date;</code>。这样既不用再声明成员变量，也不要费神写@synthesize，方便不少。</p>
+
+
+		
+		<a href="/2013/07/modern-objective-c-until-2013/" class="more-link">继续阅读</a>
+	</div>
+
+</article>
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-03T22:29:00+08:00" data-updated="true" itemprop="datePublished">Jul 3<span>rd</span>, 2013</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/category/ios/'>iOS</a>
+
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/2013/07/tricky-initialize-and-load/" itemprop="url">关于+initialize和+load的坑</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>NSObject有两个特殊的类方法+initialize和+load。+initialize会在类的任何其他函数调用前被调用，因此也可以利用这个特性实现Singleton单例：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>static Manager +theManager = nil;
+</span><span class='line'>
+</span><span class='line'>+ (void) initialize 
+</span><span class='line'>{
+</span><span class='line'>  if (self == [Manager class]) 
+</span><span class='line'>  {
+</span><span class='line'>      theManager = [[Manager alloc] init];
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>+ (Manager *)sharedObj 
+</span><span class='line'>{
+</span><span class='line'>  return theManager;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>+load方法是在所在类加载到系统的时候被调用，这通常会比+initialized调用的时机要早，不过通常由于运行环境还有太多不确定性，不建议在+load中调用实际的方法。虽然Apple文档里说+initialized和+load都只会被执行一次，但是这里有坑。</p>
+
+<p>如果子类里没有实现+initialized而父类里面实现了+initialized，那么用到子类时，不是说一定要生成对象，+initialize是调用任何方法，包括类方法，例如[SubClass class]，那么父类的+initialized就会被执行两次！解决办法也很简单，就像开头的写法<code>if (self == [Manager class])</code>，先判断下是不是当前类的类型。</p>
+
+<p>那么对于+load呢？如果你在类的实现中实现了+load，但是在这个类的Category中又实现了一个+load，那么这两个+load都会被调用。</p>
+
+<p>既然这两个方法都是如此的诡异，所以除非必要，最好都不要在这两个方法中执行太多的操作，尤其是+load。绕过坑，远离危险。</p>
+
+		
+		
+	</div>
+
+</article>
+
+</div>
+<nav id="pagenavi">
+    
+    
+        <a href="/page/2/" class="next">Next</a>
+    
+    <div class="center"><a href="/blog/archives">Blog Archives</a></div>
+</nav></div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2015 - hrchen -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'hrchen';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+	<script type="text/javascript">
+		var _gaq = _gaq || [];
+		_gaq.push(['_setAccount', 'UA-42768336-1']);
+		_gaq.push(['_trackPageview']);
+
+		(function() {
+			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		})();
+	</script>
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,191 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>几个有用的Objective-C新特性 - All about mobile things.</title>
+	<meta name="author" content="hrchen">
+
+	
+	<meta name="description" content="几个有用的Objective-C新特性 Objective-C已经稳定在TIOBE编程语言排行榜前五名，2010年刚接触Objective-C还是因为公司在搞Mac版企业IM开发，那时候OC还几乎无人问津，这些年倒是风光无限，只能感叹当初踩对点了，不清楚未来10年又会有哪些语言流行起来， &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="All about mobile things." type="application/atom+xml">
+	
+	<link rel="canonical" href="http://hrchen.com/2013/07/modern-objective-c-until-2013/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		$(function(){
+			$('.profilepic').append("<img src='http://www.gravatar.com/avatar/" + MD5("dr.hrchen@gmail.com") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+		});
+	</script>
+</div>
+<hgroup>
+  <h1><a href="/">All about mobile things.</a></h1>
+</hgroup>
+
+<p class="subtitle">hrchen's blogging (dr.hrchen@gmail.com)</p>
+<p class="subtitle">CS Ph.D，专注移动产品开发，现任携程无线开发总监</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		<a class="weibo" href="http://www.weibo.com/hrchen" title="Sina Weibo">Weibo</a>
+		
+		
+		
+		
+		<a class="twitter" href="http://twitter.com/hrchen" title="Twitter">Twitter</a>
+		
+		
+		<a class="github" href="https://github.com/hrchen" title="GitHub">GitHub</a>
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+	<h1 class="title" itemprop="name">几个有用的Objective-C新特性</h1>
+	<div class="entry-content" itemprop="articleBody"><p>Objective-C已经稳定在TIOBE编程语言排行榜前五名，2010年刚接触Objective-C还是因为公司在搞Mac版企业IM开发，那时候OC还几乎无人问津，这些年倒是风光无限，只能感叹当初踩对点了，不清楚未来10年又会有哪些语言流行起来，下一个会不会是<a href="http://golang.org/">go</a>？。这几年来Objective-C的进化速度也是非常快，Apple不断添加新的特性到Objective-C，例如ARC、Block等，以下挑些个人感觉对开发效率影响比较大的新特性来说：</p>
+
+<h3>不用再写sythesize</h3>
+
+<p>以前声明属性Property，都要在类的实现@implementation里将属性和成员变量做相应的synthesize，synthesize的含义是将属性和成员变量做关联。早期声明一个属性，需要同样声明一个成员变量，然后<code>@synthersize date=_date;</code>将属性与成员变量关联起来，后来可以无需声明成员变量，<code>@synthersize date=_date;</code>可以自动帮你声明一个名字为_date的成员变量，<code>@synthersize date</code>就是自动声明一个成员变量date。</p>
+
+<p>Xcode4.4以后，synthesize关键字也不需要写了，例如<code>@property (nonatomic, readwrite, retain) NSDate *date;</code>编译器可以自动绑定并且生成对应的成员变量<code>NSDate *_date</code>，相当于是自动添加了<code>@synthesize date=_date;</code>。这样既不用再声明成员变量，也不要费神写@synthesize，方便不少。</p>
+
+<!--more-->
+
+
+<p>当然凡事有例外，如果同时实现了setter和getter方法，例如上面你实现了<code>-(void)setDate</code>和<code>-(NSDate *)date</code>，那么编译器就不会自动帮你synthesize。这里同时实现setter和getter方法是针对readwrite属性来说的，对于readonly属性，那么你实现了getter方法即<code>-(NSDate *)date</code>也同样不会自动绑定成员变量。</p>
+
+<h3>成员方法的顺序</h3>
+
+<p>以前在.m实现文件中实现方法时经常会引用其他成员方法，而如果引用的成员方法未在头文件或者匿名catrgory中声明，同时也不在引用者前面，那么编译器会报未找到该方法的错误。现在新的编译器中，只要在实现文件里的成员方法，在其他任何位置的方法中调用都不再报错，Nice!</p>
+
+<h3>不一样的NSNumber、NSArray和NSDictionary</h3>
+
+<p>最新的OC语法里还添加了许多类似脚本语言的特性，例如以前要生成NSNumber满费劲，都是[NSNumber numberWith***]的写法，太多冗余。现在方便了，可以用@符号替代，例如<code>[NSNumber numberWithChar:‘c’]</code>可以直接表示为<code>@'c'</code>，<code>[NSNumber numberWithInt:123]</code>直接表示为<code>@123</code>，<code>[NSNumber numberWithFloat:1.23f]</code>z直接写为<code>@1.23f</code>，其他类型同理变换。</p>
+
+<p>NSArray的变化也是类似的，<code>[NSArray array]</code>就是<code>@[]</code>，<code>[NSArray arrayWithObject:x]</code>就是 <code>@[x]</code>，<code>[NSArray arrayWithObjects:x, y, z, nil]</code>就是<code>@[x, y, z]</code>，不过这种方式生成的是NSArray，要生成NSMutableArray呢？也简单，直接调用mutableCopy即可，例如<code>[@[x, y, z] mutableCopy]</code>。如果要访问第1个元素，以前需要写成<code>[array objectAtIndex:0]</code>，现在可以直接用<code>array[0]</code>访问，像极了脚本语言。</p>
+
+<p>NSDictionary的变化和NSArray类似，不同的是用<code>@{}</code>,例如<code>[NSDictionary dictionaryWithObject:value forKey:key]</code>可以表示为<code>@{key: value}</code>。访问时也和大多数脚本语言一样，用<code>dict[key]</code>来获得键值对应的值。</p>
+
+<p>至于以上简化的方法到底要不要用，还是看自己或者项目组的习惯了，个人建议是在符合统一编码规范的情况下，尽量拥抱变化，毕竟这些都是为了优化生产效率的变化。</p>
+</div>
+
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+	
+	
+	<a class="addthis_button_tweet"></a>
+	
+	
+	<a class="addthis_counter addthis_pill_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/250/addthis_widget.js#pubid="></script>
+</div>
+
+
+
+<section id="comment">
+    <h1 class="title">Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2015 - hrchen -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'hrchen';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://hrchen.com/2013/07/modern-objective-c-until-2013/';
+        var disqus_url = 'http://hrchen.com/2013/07/modern-objective-c-until-2013/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+	<script type="text/javascript">
+		var _gaq = _gaq || [];
+		_gaq.push(['_setAccount', 'UA-42768336-1']);
+		_gaq.push(['_trackPageview']);
+
+		(function() {
+			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		})();
+	</script>
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Android | All about mobile things.]]></title>
+  <link href="http://hrchen.com/category/android/atom.xml" rel="self"/>
+  <link href="http://hrchen.com/"/>
+  <updated>2015-04-27T18:07:04+08:00</updated>
+  <id>http://hrchen.com/</id>
+  <author>
+    <name><![CDATA[hrchen]]></name>
+    <email><![CDATA[dr.hrchen@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Android App动态更新综述]]></title>
+    <link href="http://hrchen.com/2015/04/how-to-implement-android-dynamic-update/"/>
+    <updated>2015-04-20T15:01:00+08:00</updated>
+    <id>http://hrchen.com/2015/04/how-to-implement-android-dynamic-update</id>
+    <content type="html"><![CDATA[<p>国内App尤其是电商类App功能设计上都非常复杂。</p>
+]]></content>
+  </entry>
+  
+</feed>
